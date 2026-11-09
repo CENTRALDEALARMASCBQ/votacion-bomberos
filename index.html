@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Votación de Bomberos</title>
+</head>
+<body>
+    <h1>Control de Disponibilidad</h1>
+    <button onclick="votar('0-9')">0-9 (Disponible)</button>
+    <button onclick="votar('0-8')">0-8 (No Disponible)</button>
+    <button onclick="votar('NR')">NR (No Responde)</button>
+
+    <h2>Resultados en vivo</h2>
+    <p>Total de votos: <span id="totalVotos">0</span></p>
+    <div id="resultados"></div>
+    
+    <script src="app.js"></script>
+</body>
+</html>
