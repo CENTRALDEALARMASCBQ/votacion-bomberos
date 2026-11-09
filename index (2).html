@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Votación Bomberos Voluntarios</title>
+
+<!-- Vista previa al compartir por WhatsApp / redes -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="🚒 Votación de disponibilidad - Bomberos">
+<meta property="og:description" content="Entra, elige tu nombre y vota tu disponibilidad.">
+<meta name="theme-color" content="#b91c1c">
+
+<style>
+  :root{--rojo:#b91c1c;--verde:#15803d;--gris:#6b7280;--fondo:#f3f4f6;--card:#fff;--borde:#e5e7eb}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--fondo);color:#111827}
+  header{background:var(--rojo);color:#fff;padding:14px 16px;text-align:center}
+  header h1{margin:0;font-size:1.15rem}
+  header small{opacity:.9}
+  main{max-width:720px;margin:0 auto;padding:12px}
+  nav{display:flex;gap:6px;margin-bottom:12px}
+  nav button{flex:1;padding:10px 4px;border:1px solid var(--borde);background:#fff;border-radius:10px;font-size:.9rem;cursor:pointer}
+  nav button.on{background:var(--rojo);color:#fff;border-color:var(--rojo)}
+  .card{background:var(--card);border-radius:12px;padding:14px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+  select,input[type=month]{width:100%;padding:12px;font-size:1rem;border:1px solid var(--borde);border-radius:10px;background:#fff}
+  .perfil{display:flex;align-items:center;gap:12px;margin-top:12px}
+  .avatar{width:56px;height:56px;border-radius:50%;background:#d1d5db;object-fit:cover;display:flex;align-items:center;justify-content:center;font-weight:700;color:#374151;flex:none}
+  .slot{border:1px solid var(--borde);border-radius:12px;padding:12px;margin-top:12px}
+  .slot h3{margin:0 0 8px;font-size:1rem}
+  .botones{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+  .botones button{padding:14px 4px;border:0;border-radius:10px;font-size:1rem;font-weight:700;color:#fff;cursor:pointer}
+  .b-dis{background:var(--verde)} .b-no{background:var(--rojo)} .b-nr{background:var(--gris)}
+  .botones button:disabled{opacity:.35}
+  .hecho{color:var(--verde);font-weight:600}
+  table{width:100%;border-collapse:collapse;font-size:.9rem}
+  th,td{padding:8px 6px;border-bottom:1px solid var(--borde);text-align:center}
+  th:first-child,td:first-child{text-align:left}
+  .msg{padding:10px;border-radius:10px;margin-bottom:10px;font-size:.95rem}
+  .msg.ok{background:#dcfce7;color:#14532d} .msg.err{background:#fee2e2;color:#7f1d1d}
+  .barra{background:#e5e7eb;border-radius:999px;height:10px;overflow:hidden}
+  .barra>i{display:block;height:100%;background:var(--verde)}
+  .oculto{display:none}
+  .leyenda{font-size:.8rem;color:var(--gris);margin-top:8px}
+  .refresh{float:right;background:none;border:0;color:#fff;font-size:1.1rem;cursor:pointer}
+</style>
+</head>
+<body>
+<header>
+  <button class="refresh" onclick="cargar()" title="Actualizar">🔄</button>
+  <h1>🚒 Votación de disponibilidad</h1>
+  <small id="fechaHoy">Cargando…</small>
+</header>
+
+<main>
+  <nav>
+    <button id="t-votar" class="on" onclick="tab('votar')">🗳️ Votar</button>
+    <button id="t-dia" onclick="tab('dia')">📅 Hoy</button>
+    <button id="t-mes" onclick="tab('mes')">📊 Mes</button>
+  </nav>
+
+  <div id="aviso"></div>
+
+  <!-- VOTAR -->
+  <section id="votar">
+    <div class="card">
+      <label for="yo"><b>Yo soy:</b></label>
+      <select id="yo" onchange="elegirYo()"></select>
+      <div class="perfil oculto" id="perfil">
+        <div class="avatar" id="avatar"></div>
+        <div id="nombrePerfil" style="font-weight:700"></div>
+      </div>
+      <div id="slots"></div>
+      <div class="leyenda"><b>0-9</b> Disponible · <b>0-8</b> No disponible · <b>NR</b> No responde.<br>
+      Solo puedes votar <b>una vez por horario</b> cada día.</div>
+    </div>
+  </section>
+
+  <!-- RESUMEN DEL DÍA -->
+  <section id="dia" class="oculto">
+    <div class="card">
+      <h3 style="margin-top:0">Resumen de hoy</h3>
+      <div id="resumenDia"></div>
+    </div>
+  </section>
+
+  <!-- REPORTE MENSUAL -->
+  <section id="mes" class="oculto">
+    <div class="card">
+      <input type="month" id="selMes" onchange="cambiarMes()">
+      <h3>% de disponibilidad por horario</h3>
+      <div id="mesHorarios"></div>
+      <h3>% de disponibilidad por voluntario</h3>
+      <div id="mesVoluntarios" style="overflow-x:auto"></div>
+      <div class="leyenda">% disponibilidad = votos "0-9" ÷ votos emitidos en el mes.</div>
+    </div>
+  </section>
+</main>
+
+<script>
+/* ============ CONFIGURACIÓN ============
+   Pega aquí la URL del Web App de Apps Script (termina en /exec).
+   Va escrita en el código para que funcione en TODOS los teléfonos sin configurar nada. */
+const API_URL = 'PEGAR_AQUI_LA_URL_DEL_WEB_APP';
+/* ======================================= */
+
+let D = { horarios: [], voluntarios: [], votos: [], hoy: '' };
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function aviso(txt, tipo){
+  $('aviso').innerHTML = txt ? `<div class="msg ${tipo}">${esc(txt)}</div>` : '';
+  if (txt && tipo === 'ok') setTimeout(() => $('aviso').innerHTML = '', 3500);
+}
+
+function tab(n){
+  ['votar','dia','mes'].forEach(x => {
+    $(x).classList.toggle('oculto', x !== n);
+    $('t-'+x).classList.toggle('on', x === n);
+  });
+  if (n === 'mes') { if (!$('selMes').value) $('selMes').value = D.hoy.slice(0,7); pintarMes(); }
+}
+
+async function cargar(mes){
+  if (API_URL.indexOf('PEGAR_AQUI') === 0) { aviso('Falta configurar API_URL en index.html', 'err'); return; }
+  try {
+    const url = API_URL + (mes ? '?mes=' + mes : '');
+    const r = await fetch(url);
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error || 'Error');
+    D = j;
+    $('fechaHoy').textContent = 'Hoy: ' + j.hoy;
+    if (!$('selMes').value) $('selMes').value = j.mes;
+    pintarYo(); pintarSlots(); pintarDia(); pintarMes();
+  } catch (e) {
+    aviso('No se pudo conectar con la base de datos. Revisa tu internet y vuelve a intentar.', 'err');
+  }
+}
+
+/* ---------- Votar ---------- */
+function pintarYo(){
+  const sel = $('yo'), guardado = localStorage.getItem('yo') || '';
+  sel.innerHTML = '<option value="">— Elige tu nombre —</option>' +
+    D.voluntarios.map(v => `<option ${v.nombre===guardado?'selected':''}>${esc(v.nombre)}</option>`).join('');
+  elegirYo(true);
+}
+
+function elegirYo(silencioso){
+  const n = $('yo').value;
+  if (!silencioso) localStorage.setItem('yo', n);
+  const v = D.voluntarios.find(x => x.nombre === n);
+  $('perfil').classList.toggle('oculto', !v);
+  if (v){
+    $('nombrePerfil').textContent = v.nombre;
+    $('avatar').innerHTML = v.foto
+      ? `<img class="avatar" src="${esc(v.foto)}" alt="" onerror="this.outerHTML='${iniciales(v.nombre)}'">`
+      : iniciales(v.nombre);
+  }
+  pintarSlots();
+}
+const iniciales = n => n.split(/\s+/).slice(0,2).map(p => p[0]||'').join('').toUpperCase();
+
+function pintarSlots(){
+  const n = $('yo').value;
+  if (!n){ $('slots').innerHTML = ''; return; }
+  $('slots').innerHTML = D.horarios.map(h => {
+    const ya = D.votos.find(v => v.fecha === D.hoy && v.horario === h && v.voluntario === n);
+    return `<div class="slot"><h3>${esc(h)}</h3>` + (ya
+      ? `<div class="hecho">✔ Ya votaste: ${esc(ya.voto)} (${esc(ya.hora.slice(0,5))})</div>`
+      : `<div class="botones">
+           <button class="b-dis" onclick="votar('${esc(h)}','0-9',this)">0-9</button>
+           <button class="b-no"  onclick="votar('${esc(h)}','0-8',this)">0-8</button>
+           <button class="b-nr"  onclick="votar('${esc(h)}','NR',this)">NR</button>
+         </div>`) + `</div>`;
+  }).join('');
+}
+
+async function votar(horario, voto, btn){
+  const nombre = $('yo').value;
+  if (!nombre) return;
+  if (!confirm(`${nombre}\nHorario: ${horario}\nVoto: ${voto}\n\n¿Confirmar? No se puede cambiar.`)) return;
+  document.querySelectorAll('.botones button').forEach(b => b.disabled = true);
+  try {
+    const r = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // evita bloqueo CORS
+      body: JSON.stringify({ voluntario: nombre, horario, voto })
+    });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error);
+    aviso('✔ Voto registrado: ' + horario + ' → ' + voto, 'ok');
+  } catch (e) {
+    aviso(e.message || 'No se pudo registrar el voto', 'err');
+  }
+  await cargar();
+}
+
+/* ---------- Resumen del día ---------- */
+const pct = (a, b) => b ? Math.round(a * 100 / b) : 0;
+const barra = p => `<div class="barra"><i style="width:${p}%"></i></div>`;
+
+function pintarDia(){
+  const total = D.voluntarios.length;
+  const hoy = D.votos.filter(v => v.fecha === D.hoy);
+  let h = '';
+  D.horarios.forEach(s => {
+    const vs = hoy.filter(v => v.horario === s);
+    const dis = vs.filter(v => v.voto === '0-9').length;
+    const no = vs.filter(v => v.voto === '0-8').length;
+    const nr = vs.filter(v => v.voto === 'NR').length;
+    const p = pct(dis, total);
+    h += `<div class="slot"><h3>${esc(s)} — ${p}% disponible</h3>${barra(p)}
+      <div class="leyenda">0-9: ${dis} · 0-8: ${no} · NR: ${nr} · Sin votar: ${total - vs.length} (de ${total})</div></div>`;
+  });
+  const votaron = new Set(hoy.map(v => v.voluntario)).size;
+  const totalDis = hoy.filter(v => v.voto === '0-9').length;
+  const totalVotos = hoy.length;
+  h += `<div class="slot"><h3>Total del día: ${pct(totalDis, totalVotos)}% disponible</h3>${barra(pct(totalDis,totalVotos))}
+        <div class="leyenda">${votaron} de ${total} voluntarios han votado hoy.</div></div>`;
+  $('resumenDia').innerHTML = h;
+}
+
+/* ---------- Reporte mensual ---------- */
+async function cambiarMes(){ await cargar($('selMes').value); }
+
+function pintarMes(){
+  if (D.mes !== ($('selMes').value || D.mes)) return;
+  let h = '';
+  D.horarios.forEach(s => {
+    const vs = D.votos.filter(v => v.horario === s);
+    const p = pct(vs.filter(v => v.voto === '0-9').length, vs.length);
+    h += `<div style="margin:8px 0"><b>${esc(s)}</b> — ${p}% (${vs.length} votos)${barra(p)}</div>`;
+  });
+  $('mesHorarios').innerHTML = h || '<div class="leyenda">Sin votos en este mes.</div>';
+
+  let t = `<table><tr><th>Voluntario</th><th>0-9</th><th>0-8</th><th>NR</th><th>%</th></tr>`;
+  D.voluntarios.forEach(v => {
+    const vs = D.votos.filter(x => x.voluntario === v.nombre);
+    const a = vs.filter(x => x.voto === '0-9').length;
+    const b = vs.filter(x => x.voto === '0-8').length;
+    const c = vs.filter(x => x.voto === 'NR').length;
+    t += `<tr><td>${esc(v.nombre)}</td><td>${a}</td><td>${b}</td><td>${c}</td><td><b>${pct(a, vs.length)}%</b></td></tr>`;
+  });
+  $('mesVoluntarios').innerHTML = t + '</table>';
+}
+
+cargar();
+</script>
+</body>
+</html>
