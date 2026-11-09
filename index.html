@@ -1,19 +1,425 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <title>Votación de Bomberos</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistema de Asistencia - Bomberos Voluntarios (Multiusuario)</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI', Arial, sans-serif; }
+  body { background:#1a1f2e; color:#eee; min-height:100vh; }
+  header { background:linear-gradient(135deg,#c62828,#8e0000); padding:18px 24px; display:flex; align-items:center; gap:14px; box-shadow:0 2px 8px rgba(0,0,0,.4); }
+  header .logo { font-size:34px; }
+  header h1 { font-size:20px; }
+  header p { font-size:12px; opacity:.85; }
+  nav { display:flex; gap:8px; padding:12px 24px; background:#232941; flex-wrap:wrap; }
+  nav button { background:#2f3a5c; color:#eee; border:none; padding:10px 18px; border-radius:8px; cursor:pointer; font-size:14px; font-weight:600; }
+  nav button.active, nav button:hover { background:#c62828; }
+  main { padding:20px 24px; max-width:1100px; margin:auto; }
+  .card { background:#232941; border-radius:12px; padding:20px; margin-bottom:18px; box-shadow:0 2px 6px rgba(0,0,0,.3); }
+  .card h2 { font-size:17px; margin-bottom:14px; color:#ff8a80; }
+  input, select { background:#1a1f2e; border:1px solid #3a4468; color:#eee; padding:10px 12px; border-radius:8px; font-size:14px; }
+  input:focus, select:focus { outline:2px solid #c62828; }
+  button.btn { background:#c62828; color:#fff; border:none; padding:10px 16px; border-radius:8px; cursor:pointer; font-weight:600; }
+  button.btn.sec { background:#3a4468; }
+  button.btn:hover { filter:brightness(1.15); }
+  button.btn:disabled { opacity:.5; cursor:wait; }
+  table { width:100%; border-collapse:collapse; margin-top:10px; font-size:14px; }
+  th { background:#2f3a5c; padding:10px; text-align:left; }
+  td { padding:9px 10px; border-bottom:1px solid #2f3a5c; }
+  tr:hover td { background:#2a3352; }
+  .tag { padding:3px 10px; border-radius:20px; font-size:12px; font-weight:700; display:inline-block; }
+  .tag.disp { background:#2e7d32; }
+  .tag.nodisp { background:#c62828; }
+  .tag.nr { background:#757575; }
+  .tag.sin { background:#455a64; }
+  .pct-bar { background:#1a1f2e; border-radius:6px; height:14px; overflow:hidden; margin-top:4px; }
+  .pct-fill { height:100%; background:linear-gradient(90deg,#66bb6a,#2e7d32); }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .big { font-size:26px; font-weight:800; }
+  .ok { color:#81c784; } .bad { color:#ef9a9a; } .gray { color:#b0bec5; }
+  .msg { padding:10px 14px; border-radius:8px; margin-top:10px; font-size:13px; display:none; }
+  .msg.show { display:block; }
+  .msg.ok { background:#1b3a1e; color:#a5d6a7; }
+  .msg.err { background:#3a1b1b; color:#ef9a9a; }
+  .voter { display:flex; align-items:center; gap:10px; padding:10px; border-bottom:1px solid #2f3a5c; flex-wrap:wrap; }
+  .voter .name { flex:1; min-width:140px; font-weight:600; }
+  .voter button { border:none; padding:8px 14px; border-radius:8px; cursor:pointer; font-weight:700; font-size:13px; color:#fff; }
+  .v-btn-disp { background:#2e7d32; } .v-btn-nodisp { background:#c62828; } .v-btn-nr { background:#757575; }
+  .voter button.sel { outline:3px solid #ffd54f; }
+  .voter.me { background:#2a3352; border-radius:10px; }
+  .syncbar { display:flex; align-items:center; gap:10px; padding:10px 24px; background:#1a1f2e; font-size:13px; color:#b0bec5; flex-wrap:wrap; }
+  .dot { width:10px; height:10px; border-radius:50%; background:#757575; display:inline-block; }
+  .dot.on { background:#66bb6a; } .dot.off { background:#ef5350; }
+  @media(max-width:640px){ .grid2{grid-template-columns:1fr;} main{padding:14px;} }
+</style>
 </head>
 <body>
-    <h1>Control de Disponibilidad</h1>
-    <button onclick="votar('0-9')">0-9 (Disponible)</button>
-    <button onclick="votar('0-8')">0-8 (No Disponible)</button>
-    <button onclick="votar('NR')">NR (No Responde)</button>
+<header>
+  <div class="logo">🚒</div>
+  <div>
+    <h1>Sistema de Votación y Asistencia</h1>
+    <p>Cuerpo de Bomberos Voluntarios — Votación desde celulares, datos centralizados</p>
+  </div>
+</header>
 
-    <h2>Resultados en vivo</h2>
-    <p>Total de votos: <span id="totalVotos">0</span></p>
-    <div id="resultados"></div>
-    
-    <script src="app.js"></script>
+<div class="syncbar">
+  <span class="dot" id="dotEstado"></span>
+  <span id="txtEstado">Sin configurar</span>
+  <button class="btn sec" style="padding:6px 12px;font-size:12px" onclick="sincronizar(true)">🔄 Sincronizar</button>
+</div>
+
+<nav>
+  <button class="active" data-tab="votar" onclick="showTab('votar')">🗳️ Votar hoy</button>
+  <button data-tab="voluntarios" onclick="showTab('voluntarios')">👥 Voluntarios</button>
+  <button data-tab="historial" onclick="showTab('historial')">📅 Historial</button>
+  <button data-tab="reporte" onclick="showTab('reporte')">📊 Reporte mensual</button>
+  <button data-tab="config" onclick="showTab('config')">⚙️ Configuración</button>
+</nav>
+
+<main>
+  <!-- VOTAR -->
+  <section id="tab-votar">
+    <div class="card">
+      <h2>Votación del día: <span id="fechaHoy"></span></h2>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+        <label style="font-size:13px;color:#b0bec5">Yo soy:</label>
+        <select id="selYo" onchange="cambiarYo()" style="min-width:200px"></select>
+      </div>
+      <p style="font-size:13px;color:#b0bec5;margin-bottom:12px">
+        <span class="tag disp">0-9</span> Disponible &nbsp;
+        <span class="tag nodisp">0-8</span> No disponible &nbsp;
+        <span class="tag nr">NR</span> No responde
+      </p>
+      <div id="listaVotacion"></div>
+      <div class="msg" id="msgVoto"></div>
+    </div>
+  </section>
+
+  <!-- VOLUNTARIOS -->
+  <section id="tab-voluntarios" style="display:none">
+    <div class="card">
+      <h2>Agregar voluntario</h2>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <input id="nuevoNombre" placeholder="Nombre del voluntario" style="flex:1;min-width:200px">
+        <button class="btn" onclick="agregarVoluntario()">➕ Agregar</button>
+      </div>
+      <div class="msg" id="msgVol"></div>
+    </div>
+    <div class="card">
+      <h2>Lista de voluntarios</h2>
+      <table>
+        <thead><tr><th>#</th><th>Nombre</th><th>Voto de hoy</th><th>Acciones</th></tr></thead>
+        <tbody id="tablaVoluntarios"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- HISTORIAL -->
+  <section id="tab-historial" style="display:none">
+    <div class="card">
+      <h2>Historial de votos</h2>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+        <select id="filtroMes" onchange="pintarHistorial()"></select>
+        <button class="btn sec" onclick="borrarMes()">🗑️ Borrar mes seleccionado</button>
+      </div>
+      <table>
+        <thead><tr><th>Fecha</th><th>Voluntario</th><th>Voto</th></tr></thead>
+        <tbody id="tablaHistorial"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- REPORTE -->
+  <section id="tab-reporte" style="display:none">
+    <div class="card">
+      <h2>Reporte mensual de asistencia</h2>
+      <select id="mesReporte" onchange="pintarReporte()"></select>
+      <div id="resumenReporte" style="margin-top:16px"></div>
+      <table>
+        <thead><tr><th>Voluntario</th><th>Disponibles</th><th>No disponibles</th><th>NR</th><th>% Asistencia</th></tr></thead>
+        <tbody id="tablaReporte"></tbody>
+      </table>
+      <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn" onclick="exportarCSV()">⬇️ Exportar CSV</button>
+        <button class="btn sec" onclick="window.print()">🖨️ Imprimir reporte</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- CONFIG -->
+  <section id="tab-config" style="display:none">
+    <div class="card">
+      <h2>⚙️ Conexión con Google Sheets</h2>
+      <p style="font-size:13px;color:#b0bec5;margin-bottom:12px">
+        Pega aquí la URL del "Web App" de Google Apps Script (ver instrucciones en el chat).
+        Todos los celulares deben usar <strong>la misma URL</strong>.
+      </p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <input id="inpUrl" placeholder="https://script.google.com/macros/s/....../exec" style="flex:1;min-width:250px">
+        <button class="btn" onclick="guardarUrl()">💾 Guardar y probar</button>
+        <button class="btn sec" onclick="borrarUrl()">❌ Borrar configuración</button>
+      </div>
+      <div class="msg" id="msgCfg"></div>
+    </div>
+    <div class="card">
+      <h2>📱 Compartir con los voluntarios</h2>
+      <p style="font-size:13px;color:#b0bec5">
+        Envía a cada voluntario el enlace de esta página (o ábrela en su celular).
+        Al entrar, cada uno elige su nombre en "Yo soy" y vota. Su elección queda guardada en su celular.
+      </p>
+    </div>
+  </section>
+</main>
+
+<script>
+// ---------- Estado ----------
+const LS_URL = 'bomberos_url', LS_YO = 'bomberos_yo', LS_CACHE = 'bomberos_cache';
+let API_URL = localStorage.getItem(LS_URL) || '';
+let yoId = localStorage.getItem(LS_YO) || '';
+let db = JSON.parse(localStorage.getItem(LS_CACHE) || '{"voluntarios":[],"votos":{}}');
+
+const hoyISO = () => {
+  const d = new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+};
+const ETIQUETAS = { disp:'0-9 Disponible', nodisp:'0-8 No disponible', nr:'NR No responde' };
+const CLASES = { disp:'disp', nodisp:'nodisp', nr:'nr' };
+
+// ---------- API (Google Apps Script) ----------
+async function apiGet(){
+  const r = await fetch(API_URL + '?action=init');
+  const data = await r.json();
+  if(!data.ok) throw new Error('Respuesta inválida');
+  db = { voluntarios: data.voluntarios || [], votos: data.votos || {} };
+  localStorage.setItem(LS_CACHE, JSON.stringify(db));
+}
+async function apiPost(obj){
+  const r = await fetch(API_URL, { method:'POST', body: JSON.stringify(obj) });
+  const data = await r.json();
+  if(!data.ok) throw new Error(data.error || 'Error del servidor');
+  return data;
+}
+
+function setEstado(txt, cls){
+  document.getElementById('dotEstado').className = 'dot ' + (cls||'');
+  document.getElementById('txtEstado').textContent = txt;
+}
+
+async function sincronizar(mostrarMsg){
+  if(!API_URL){ setEstado('Sin configurar — ve a ⚙️ Configuración','off'); return false; }
+  setEstado('Sincronizando…','');
+  try{
+    await apiGet();
+    setEstado('Conectado ✔ ' + new Date().toLocaleTimeString('es-ES'),'on');
+    refrescarTodo();
+    if(mostrarMsg) mostrarMsg('msgVoto','Datos actualizados ✔',true);
+    return true;
+  }catch(e){
+    setEstado('Error de conexión: ' + e.message,'off');
+    if(mostrarMsg) mostrarMsg('msgVoto','No se pudo conectar: ' + e.message,false);
+    return false;
+  }
+}
+
+// ---------- Config ----------
+function guardarUrl(){
+  const u = document.getElementById('inpUrl').value.trim();
+  if(!u.startsWith('http')) return mostrarMsg('msgCfg','Pega una URL válida.',false);
+  API_URL = u; localStorage.setItem(LS_URL, u);
+  mostrarMsg('msgCfg','Probando conexión…',true);
+  sincronizar().then(ok => mostrarMsg('msgCfg', ok ? '¡Conexión exitosa! Ya pueden votar desde sus celulares ✔' : 'No se conectó. Revisa la URL y que el Web App esté desplegado para "Cualquier persona".', ok));
+}
+function borrarUrl(){
+  if(!confirm('¿Borrar la configuración de este dispositivo?')) return;
+  API_URL=''; localStorage.removeItem(LS_URL);
+  document.getElementById('inpUrl').value='';
+  setEstado('Sin configurar','off');
+}
+
+// ---------- Navegación ----------
+function showTab(t){
+  document.querySelectorAll('main > section').forEach(s=>s.style.display='none');
+  document.getElementById('tab-'+t).style.display='block';
+  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('active', b.dataset.tab===t));
+  if(t==='votar') pintarVotacion();
+  if(t==='voluntarios') pintarVoluntarios();
+  if(t==='historial'){ llenarMeses('filtroMes'); pintarHistorial(); }
+  if(t==='reporte'){ llenarMeses('mesReporte'); pintarReporte(); }
+  if(t==='config') document.getElementById('inpUrl').value = API_URL;
+}
+function refrescarTodo(){
+  const activo = document.querySelector('nav button.active').dataset.tab;
+  showTab(activo);
+}
+
+function mostrarMsg(id, texto, ok){
+  const el = document.getElementById(id);
+  el.textContent = texto; el.className = 'msg show ' + (ok?'ok':'err');
+  setTimeout(()=>el.className='msg', 3500);
+}
+
+// ---------- "Yo soy" ----------
+function llenarSelYo(){
+  const sel = document.getElementById('selYo');
+  sel.innerHTML = '<option value="">— Todos (modo administrador) —</option>' +
+    db.voluntarios.map(v=>`<option value="${v.id}" ${v.id===yoId?'selected':''}>${v.nombre}</option>`).join('');
+}
+function cambiarYo(){
+  yoId = document.getElementById('selYo').value;
+  localStorage.setItem(LS_YO, yoId);
+  pintarVotacion();
+}
+
+// ---------- Voluntarios ----------
+async function agregarVoluntario(){
+  const inp = document.getElementById('nuevoNombre');
+  const nombre = inp.value.trim();
+  if(!nombre) return mostrarMsg('msgVol','Escribe un nombre.',false);
+  try{
+    await apiPost({action:'addVol', nombre});
+    inp.value='';
+    await sincronizar();
+    mostrarMsg('msgVol','Voluntario agregado ✔',true);
+  }catch(e){ mostrarMsg('msgVol','Error: '+e.message,false); }
+}
+async function eliminarVoluntario(id){
+  if(!confirm('¿Eliminar este voluntario? Sus votos se mantienen en el historial.')) return;
+  try{
+    await apiPost({action:'delVol', id});
+    await sincronizar();
+  }catch(e){ alert('Error: '+e.message); }
+}
+function pintarVoluntarios(){
+  const tb = document.getElementById('tablaVoluntarios');
+  const votosHoy = db.votos[hoyISO()] || {};
+  tb.innerHTML = db.voluntarios.length ? db.voluntarios.map((v,i)=>{
+    const voto = votosHoy[v.id];
+    return `<tr><td>${i+1}</td><td>${v.nombre}</td>
+      <td>${voto?`<span class="tag ${CLASES[voto]}">${ETIQUETAS[voto]}</span>`:'<span class="tag sin">Sin votar</span>'}</td>
+      <td><button class="btn sec" onclick="eliminarVoluntario('${v.id}')">🗑️</button></td></tr>`;
+  }).join('') : '<tr><td colspan="4" style="color:#b0bec5">No hay voluntarios registrados todavía.</td></tr>';
+}
+
+// ---------- Votación diaria ----------
+async function votar(volId, voto){
+  try{
+    await apiPost({action:'voto', fecha: hoyISO(), volId, voto});
+    await sincronizar();
+    mostrarMsg('msgVoto','Voto registrado ✔',true);
+  }catch(e){ mostrarMsg('msgVoto','Error al guardar: '+e.message,false); }
+}
+function pintarVotacion(){
+  document.getElementById('fechaHoy').textContent =
+    new Date().toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  llenarSelYo();
+  const cont = document.getElementById('listaVotacion');
+  const votosHoy = db.votos[hoyISO()] || {};
+  let lista = db.voluntarios;
+  if(yoId) lista = db.voluntarios.filter(v=>v.id===yoId);
+  cont.innerHTML = lista.length ? lista.map(v=>{
+    const voto = votosHoy[v.id];
+    return `<div class="voter ${yoId?'me':''}">
+      <span class="name">${v.nombre}</span>
+      <button class="v-btn-disp ${voto==='disp'?'sel':''}" onclick="votar('${v.id}','disp')">0-9 Disponible</button>
+      <button class="v-btn-nodisp ${voto==='nodisp'?'sel':''}" onclick="votar('${v.id}','nodisp')">0-8 No disponible</button>
+      <button class="v-btn-nr ${voto==='nr'?'sel':''}" onclick="votar('${v.id}','nr')">NR</button>
+    </div>`;
+  }).join('') : '<p style="color:#b0bec5">No hay voluntarios registrados todavía.</p>';
+}
+
+// ---------- Meses ----------
+function llenarMeses(selId){
+  const sel = document.getElementById(selId);
+  const meses = [...new Set(Object.keys(db.votos).map(f=>f.slice(0,7)))].sort().reverse();
+  sel.innerHTML = meses.length ? meses.map(m=>{
+    const [y,mm]=m.split('-');
+    return `<option value="${m}">${new Date(y,mm-1).toLocaleDateString('es-ES',{month:'long',year:'numeric'})}</option>`;
+  }).join('') : '<option value="">-- sin datos --</option>';
+}
+
+// ---------- Historial ----------
+function pintarHistorial(){
+  const mes = document.getElementById('filtroMes').value;
+  const tb = document.getElementById('tablaHistorial');
+  if(!mes){ tb.innerHTML='<tr><td colspan="3" style="color:#b0bec5">Sin registros.</td></tr>'; return; }
+  const filas = [];
+  Object.keys(db.votos).filter(f=>f.startsWith(mes)).sort().forEach(fecha=>{
+    Object.entries(db.votos[fecha]).forEach(([vid,voto])=>{
+      const v = db.voluntarios.find(x=>x.id===vid);
+      filas.push(`<tr><td>${fecha}</td><td>${v?v.nombre:'(eliminado)'}</td>
+        <td><span class="tag ${CLASES[voto]}">${ETIQUETAS[voto]}</span></td></tr>`);
+    });
+  });
+  tb.innerHTML = filas.join('') || '<tr><td colspan="3" style="color:#b0bec5">Sin registros este mes.</td></tr>';
+}
+async function borrarMes(){
+  const mes = document.getElementById('filtroMes').value;
+  if(!mes || !confirm('¿Borrar todos los votos de este mes?')) return;
+  try{
+    await apiPost({action:'borrarMes', mes});
+    await sincronizar();
+  }catch(e){ alert('Error: '+e.message); }
+}
+
+// ---------- Reporte mensual ----------
+function pintarReporte(){
+  const mes = document.getElementById('mesReporte').value;
+  const res = document.getElementById('resumenReporte');
+  const tb = document.getElementById('tablaReporte');
+  if(!mes){ res.innerHTML='<p style="color:#b0bec5">Sin datos todavía.</p>'; tb.innerHTML=''; return; }
+
+  const conteo = {};
+  Object.keys(db.votos).filter(f=>f.startsWith(mes)).forEach(fecha=>{
+    Object.entries(db.votos[fecha]).forEach(([vid,voto])=>{
+      conteo[vid] = conteo[vid] || {disp:0,nodisp:0,nr:0};
+      conteo[vid][voto]++;
+    });
+  });
+  const filas = db.voluntarios.map(v=>{
+    const c = conteo[v.id] || {disp:0,nodisp:0,nr:0};
+    const total = c.disp + c.nodisp + c.nr;
+    const pct = total ? Math.round(c.disp/total*100) : 0;
+    return {v, c, total, pct};
+  });
+  tb.innerHTML = filas.map(f=>`<tr>
+    <td>${f.v.nombre}</td>
+    <td class="ok">${f.c.disp}</td>
+    <td class="bad">${f.c.nodisp}</td>
+    <td class="gray">${f.c.nr}</td>
+    <td style="min-width:160px">
+      <strong>${f.pct}%</strong>
+      <div class="pct-bar"><div class="pct-fill" style="width:${f.pct}%"></div></div>
+    </td></tr>`).join('') || '<tr><td colspan="5" style="color:#b0bec5">Sin voluntarios.</td></tr>';
+
+  const tot = filas.reduce((a,f)=>({disp:a.disp+f.c.disp, nodisp:a.nodisp+f.c.nodisp, nr:a.nr+f.c.nr}),{disp:0,nodisp:0,nr:0});
+  const totalVotos = tot.disp+tot.nodisp+tot.nr;
+  res.innerHTML = totalVotos ? `<div class="grid2">
+      <div class="card" style="margin:0"><h2>Resumen del mes</h2>
+        <p class="big ok">${tot.disp} <small style="font-size:13px">disponibles (${Math.round(tot.disp/totalVotos*100)}%)</small></p>
+        <p class="big bad">${tot.nodisp} <small style="font-size:13px">no disponibles (${Math.round(tot.nodisp/totalVotos*100)}%)</small></p>
+        <p class="big gray">${tot.nr} <small style="font-size:13px">no respondieron (${Math.round(tot.nr/totalVotos*100)}%)</small></p>
+      </div></div>` : '<p style="color:#b0bec5">Sin votos registrados este mes.</p>';
+}
+
+function exportarCSV(){
+  const mes = document.getElementById('mesReporte').value;
+  if(!mes) return alert('Selecciona un mes con datos.');
+  let csv = 'Fecha;Voluntario;Voto\n';
+  Object.keys(db.votos).filter(f=>f.startsWith(mes)).sort().forEach(fecha=>{
+    Object.entries(db.votos[fecha]).forEach(([vid,voto])=>{
+      const v = db.voluntarios.find(x=>x.id===vid);
+      csv += `${fecha};${v?v.nombre:'(eliminado)'};${ETIQUETAS[voto]}\n`;
+    });
+  });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}));
+  a.download = `asistencia_${mes}.csv`; a.click();
+}
+
+// ---------- Init ----------
+document.getElementById('inpUrl').value = API_URL;
+if(API_URL){ sincronizar(); } else { showTab('config'); }
+showTab(API_URL ? 'votar' : 'config');
+</script>
 </body>
 </html>
