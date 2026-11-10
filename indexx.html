@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Asistencia - Bomberos Voluntarios</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI', Arial, sans-serif; }
+  body { background:#1a1f2e; color:#eee; min-height:100vh; }
+  header { background:linear-gradient(135deg,#c62828,#8e0000); padding:18px 24px; display:flex; align-items:center; gap:14px; box-shadow:0 2px 8px rgba(0,0,0,.4); }
+  header .logo { font-size:34px; }
+  header h1 { font-size:20px; }
+  header p { font-size:12px; opacity:.85; }
+  nav { display:flex; gap:8px; padding:12px 24px; background:#232941; flex-wrap:wrap; }
+  nav button { background:#2f3a5c; color:#eee; border:none; padding:10px 18px; border-radius:8px; cursor:pointer; font-size:14px; font-weight:600; }
+  nav button.active, nav button:hover { background:#c62828; }
+  main { padding:20px 24px; max-width:1100px; margin:auto; }
+  .card { background:#232941; border-radius:12px; padding:20px; margin-bottom:18px; box-shadow:0 2px 6px rgba(0,0,0,.3); }
+  .card h2 { font-size:17px; margin-bottom:14px; color:#ff8a80; }
+  input, select { background:#1a1f2e; border:1px solid #3a4468; color:#eee; padding:10px 12px; border-radius:8px; font-size:14px; }
+  input:focus, select:focus { outline:2px solid #c62828; }
+  button.btn { background:#c62828; color:#fff; border:none; padding:10px 16px; border-radius:8px; cursor:pointer; font-weight:600; }
+  button.btn.sec { background:#3a4468; }
+  button.btn:hover { filter:brightness(1.15); }
+  table { width:100%; border-collapse:collapse; margin-top:10px; font-size:14px; }
+  th { background:#2f3a5c; padding:10px; text-align:left; }
+  td { padding:9px 10px; border-bottom:1px solid #2f3a5c; }
+  tr:hover td { background:#2a3352; }
+  tr.grupo td, tr.grupo:hover td { background:#34406a; font-weight:700; color:#ffd54f; padding:10px; }
+  .tag { padding:3px 10px; border-radius:20px; font-size:12px; font-weight:700; display:inline-block; }
+  .tag.disp { background:#2e7d32; } .tag.nodisp { background:#c62828; } .tag.nr { background:#757575; } .tag.sin { background:#455a64; }
+  .tag.aus { background:#ef6c00; }
+  .tag.ahora { outline:2px solid #ffd54f; }
+  .pct-bar { background:#1a1f2e; border-radius:6px; height:14px; overflow:hidden; margin-top:4px; display:flex; }
+  .pct-fill { height:100%; background:linear-gradient(90deg,#66bb6a,#2e7d32); }
+  .pct-bad { height:100%; background:#c62828; }
+  .pct-nr { height:100%; background:#757575; }
+  .grid3 { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+  .big { font-size:26px; font-weight:800; }
+  .ok { color:#81c784; } .bad { color:#ef9a9a; } .gray { color:#b0bec5; }
+  .msg { padding:10px 14px; border-radius:8px; margin-top:10px; font-size:13px; display:none; }
+  .msg.show { display:block; }
+  .msg.ok { background:#1b3a1e; color:#a5d6a7; }
+  .msg.err { background:#3a1b1b; color:#ef9a9a; }
+  .turnos { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
+  .turnos button { flex:1; min-width:150px; background:#2f3a5c; color:#eee; border:2px solid transparent; padding:12px; border-radius:10px; font-weight:700; font-size:14px; cursor:default; }
+  .turnos button small { display:block; font-weight:400; opacity:.8; margin-top:2px; }
+  .turnos button.active { background:#c62828; border-color:#ffd54f; }
+  .turnos button:disabled { opacity:.35; cursor:not-allowed; }
+  .aviso { background:#2f3a5c; padding:10px 14px; border-radius:8px; font-size:13px; margin-bottom:12px; color:#cfd8dc; }
+  .voter { display:flex; align-items:center; gap:10px; padding:10px; border-bottom:1px solid #2f3a5c; flex-wrap:wrap; }
+  .voter .name { flex:1; min-width:140px; font-weight:600; }
+  .voter button { border:none; padding:8px 14px; border-radius:8px; cursor:pointer; font-weight:700; font-size:13px; color:#fff; }
+  .v-btn-disp { background:#2e7d32; } .v-btn-nodisp { background:#c62828; } .v-btn-nr { background:#757575; }
+  .voter button.sel { outline:3px solid #ffd54f; }
+  .voter.me { background:#2a3352; border-radius:10px; }
+  .av { width:40px; height:40px; border-radius:50%; object-fit:cover; background:#3a4468; display:inline-flex; align-items:center; justify-content:center; font-weight:700; font-size:15px; flex:none; }
+  .nm { display:flex; align-items:center; gap:10px; }
+  .syncbar { display:flex; align-items:center; gap:10px; padding:10px 24px; background:#1a1f2e; font-size:13px; color:#b0bec5; flex-wrap:wrap; }
+  .dot { width:10px; height:10px; border-radius:50%; background:#757575; display:inline-block; }
+  .dot.on { background:#66bb6a; } .dot.off { background:#ef5350; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  .grupo-h { background:#34406a; color:#ffd54f; font-weight:700; padding:9px 12px; border-radius:8px; margin:12px 0 4px; font-size:14px; }
+  .idcol { font-size:12px; color:#b0bec5; word-break:break-all; max-width:110px; }
+  .modal { position:fixed; inset:0; background:rgba(0,0,0,.65); display:none; align-items:center; justify-content:center; z-index:50; padding:16px; }
+  .modal.show { display:flex; }
+  .modal-box { background:#232941; border-radius:12px; padding:22px; width:100%; max-width:380px; box-shadow:0 4px 18px rgba(0,0,0,.5); }
+  .modal-box h2 { font-size:17px; margin-bottom:14px; color:#ff8a80; }
+  .modal-box input { width:100%; margin-bottom:12px; }
+  /* Lo que solo ve el administrador */
+  body:not(.is-admin) .adm { display:none !important; }
+  @media(max-width:640px){ .grid3{grid-template-columns:1fr;} main{padding:14px;} .turnos button{min-width:100%;} }
+  @media print { nav, .syncbar, header, .noprint { display:none !important; } body { background:#fff; color:#000; } .card { box-shadow:none; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">🚒</div>
+  <div>
+    <h1>Sistema de Votación y Asistencia</h1>
+    <p>Cuerpo de Bomberos Voluntarios — 3 turnos diarios, datos en Google Sheets</p>
+  </div>
+</header>
+
+<div class="syncbar">
+  <span class="dot" id="dotEstado"></span>
+  <span id="txtEstado">Sin configurar</span>
+  <button class="btn sec" style="padding:6px 12px;font-size:12px" onclick="sincronizar(true)">🔄 Sincronizar</button>
+  <button class="btn sec" id="btnAdmin" style="padding:6px 12px;font-size:12px;margin-left:auto" onclick="toggleAdmin()">🔐 Administrador</button>
+</div>
+
+<nav>
+  <button class="active" data-tab="votar" onclick="showTab('votar')">🗳️ Votar</button>
+  <button class="adm" data-tab="voluntarios" onclick="showTab('voluntarios')">👥 Voluntarios</button>
+  <button data-tab="ausencias" onclick="showTab('ausencias')">🧰 Ausencias</button>
+  <button class="adm" data-tab="historial" onclick="showTab('historial')">📅 Historial</button>
+  <button class="adm" data-tab="reporte" onclick="showTab('reporte')">📊 Reporte mensual</button>
+  <button class="adm" data-tab="config" onclick="showTab('config')">⚙️ Configuración</button>
+</nav>
+
+<main>
+  <!-- VOTAR -->
+  <section id="tab-votar">
+    <div class="card">
+      <h2>Votación</h2>
+      <div class="row" style="margin-bottom:14px">
+        <label style="font-size:13px;color:#b0bec5">Fecha del turno:</label>
+        <strong id="lblFecha"></strong>
+        <label style="font-size:13px;color:#b0bec5;margin-left:8px">Yo soy:</label>
+        <select id="selYo" onchange="cambiarYo()" style="min-width:200px"></select>
+      </div>
+      <div class="turnos" id="turnosBox"></div>
+      <div class="aviso" id="avisoTurno"></div>
+      <p style="font-size:13px;color:#b0bec5;margin-bottom:12px">
+        <span class="tag disp">0-9</span> Disponible &nbsp;
+        <span class="tag nodisp">0-8</span> No disponible &nbsp;
+        <span class="tag nr">NR</span> No responde
+      </p>
+      <div id="listaVotacion"></div>
+      <div class="msg" id="msgVoto"></div>
+    </div>
+  </section>
+
+  <!-- VOLUNTARIOS (solo administrador) -->
+  <section id="tab-voluntarios" style="display:none">
+    <div class="card">
+      <h2>Agregar voluntario</h2>
+      <div class="row">
+        <input id="nuevoId" placeholder="ID (opcional)" style="width:120px">
+        <input id="nuevoNombre" placeholder="Nombre del voluntario" style="flex:1;min-width:200px">
+        <select id="nuevaComp">
+          <option value="">Sin compañía</option>
+          <option value="1">1ª Compañía</option>
+          <option value="2">2ª Compañía</option>
+          <option value="3">3ª Compañía</option>
+        </select>
+        <input id="nuevaFoto" placeholder="URL de foto (opcional)" style="flex:1;min-width:200px">
+        <button class="btn" onclick="agregarVoluntario()">➕ Agregar</button>
+      </div>
+      <p style="font-size:12px;color:#b0bec5;margin-top:8px">Si dejas el ID vacío se asigna el siguiente número disponible (1, 2, 3...).</p>
+      <div class="msg" id="msgVol"></div>
+    </div>
+    <div class="card">
+      <h2>Lista de voluntarios</h2>
+      <div class="aviso" id="avisoLista"></div>
+      <table>
+        <thead><tr><th>ID</th><th>Nombre</th><th>Votos de hoy</th><th>Compañía</th><th>Acciones</th></tr></thead>
+        <tbody id="tablaVoluntarios"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- AUSENCIAS -->
+  <section id="tab-ausencias" style="display:none">
+    <div class="card">
+      <h2>🧰 Programar ausencia por trabajo</h2>
+      <p style="font-size:13px;color:#b0bec5;margin-bottom:12px">
+        Mientras dure la ausencia, el voluntario queda automáticamente en <span class="tag nodisp">0-8</span>
+        en los 3 turnos de cada día y no puede votar.
+      </p>
+      <div class="row">
+        <select id="ausVol" style="min-width:200px"></select>
+        <label style="font-size:13px;color:#b0bec5">Desde:</label>
+        <input type="date" id="ausDesde">
+        <label style="font-size:13px;color:#b0bec5">Hasta:</label>
+        <input type="date" id="ausHasta">
+        <input id="ausMotivo" placeholder="Motivo (opcional)" value="Trabajo" style="min-width:160px">
+        <button class="btn" onclick="programarAusencia()">💾 Programar</button>
+      </div>
+      <div class="msg" id="msgAus"></div>
+    </div>
+    <div class="card">
+      <h2>Ausencias programadas</h2>
+      <table>
+        <thead><tr><th>Voluntario</th><th>Desde</th><th>Hasta</th><th>Motivo</th><th>Estado</th><th></th></tr></thead>
+        <tbody id="tablaAusencias"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- HISTORIAL (solo administrador) -->
+  <section id="tab-historial" style="display:none">
+    <div class="card">
+      <h2>Historial de votos</h2>
+      <div class="row" style="margin-bottom:8px">
+        <select id="filtroMes" onchange="pintarHistorial()"></select>
+        <button class="btn sec" onclick="borrarMes()">🗑️ Borrar mes seleccionado</button>
+      </div>
+      <table>
+        <thead><tr><th>Fecha</th><th>Turno</th><th>ID</th><th>Voluntario</th><th>Voto</th></tr></thead>
+        <tbody id="tablaHistorial"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- REPORTE (solo administrador) -->
+  <section id="tab-reporte" style="display:none">
+    <div class="card">
+      <h2>Reporte mensual de asistencia</h2>
+      <div class="row noprint">
+        <select id="mesReporte" onchange="pintarReporte()"></select>
+        <select id="turnoReporte" onchange="pintarReporte()">
+          <option value="todos">Todos los turnos</option>
+          <option value="manana">Solo mañana</option>
+          <option value="tarde">Solo tarde</option>
+          <option value="noche">Solo noche</option>
+        </select>
+        <select id="compReporte" onchange="pintarReporte()">
+          <option value="todas">Todas las compañías</option>
+          <option value="1">1ª Compañía</option>
+          <option value="2">2ª Compañía</option>
+          <option value="3">3ª Compañía</option>
+          <option value="sin">Sin compañía</option>
+        </select>
+      </div>
+      <div id="resumenReporte" style="margin-top:16px"></div>
+      <table>
+        <thead><tr><th>ID</th><th>Voluntario</th><th>Disponible</th><th>No disp.</th><th>NR</th><th>% Asistencia</th><th>% Inasistencia</th></tr></thead>
+        <tbody id="tablaReporte"></tbody>
+      </table>
+      <p style="font-size:12px;color:#b0bec5;margin-top:10px">
+        % Asistencia = disponibles ÷ turnos registrados. Inasistencia = no disponible + no responde.
+        Las ausencias por trabajo cuentan como 0-8 (no disponible).
+      </p>
+      <div class="row noprint" style="margin-top:16px">
+        <button class="btn" onclick="exportarCSV()">⬇️ Exportar CSV</button>
+        <button class="btn sec" onclick="window.print()">🖨️ Imprimir reporte</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- CONFIG (solo administrador) -->
+  <section id="tab-config" style="display:none">
+    <div class="card">
+      <h2>⚙️ Conexión con Google Sheets</h2>
+      <p style="font-size:13px;color:#b0bec5;margin-bottom:12px">
+        Pega aquí la URL del "Web App" de Google Apps Script. Todos los celulares deben usar <strong>la misma URL</strong>.
+      </p>
+      <div class="row">
+        <input id="inpUrl" placeholder="https://script.google.com/macros/s/....../exec" style="flex:1;min-width:250px">
+        <button class="btn" onclick="guardarUrl()">💾 Guardar y probar</button>
+        <button class="btn sec" onclick="borrarUrl()">❌ Borrar</button>
+      </div>
+      <div class="msg" id="msgCfg"></div>
+    </div>
+    <div class="card">
+      <h2>📱 Compartir con los voluntarios</h2>
+      <p style="font-size:13px;color:#b0bec5">
+        Envía a cada voluntario el enlace de esta página. Cada uno elige su nombre en "Yo soy" y vota en el turno que corresponda.
+        Su elección de nombre queda guardada en su celular. Los voluntarios solo ven <strong>Votar</strong> y <strong>Ausencias</strong>.
+      </p>
+      <p style="font-size:13px;color:#b0bec5;margin-top:10px">
+        La clave de administrador se cambia en <strong>Code.gs</strong> (línea <code>ADMIN_CLAVE</code>).
+      </p>
+    </div>
+  </section>
+</main>
+
+<!-- Ventana de acceso de administrador -->
+<div class="modal" id="modalAdm">
+  <div class="modal-box">
+    <h2>🔐 Acceso de administrador</h2>
+    <input type="password" id="inpClave" placeholder="Clave de administrador" onkeydown="if(event.key==='Enter') entrarAdmin()">
+    <div class="row">
+      <button class="btn" onclick="entrarAdmin()">Entrar</button>
+      <button class="btn sec" onclick="cerrarModalAdm()">Cancelar</button>
+    </div>
+    <div class="msg" id="msgAdm"></div>
+  </div>
+</div>
+
+<script>
+// ---------- Ayudas ----------
+const pad = n => String(n).padStart(2,'0');
+const iso = d => d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtFecha = f => String(f).split('-').reverse().join('/');
+
+// ---------- Constantes ----------
+const LS_URL='bomberos_url', LS_YO='bomberos_yo', LS_CACHE='bomberos_cache2', LS_ADM='bomberos_admin';
+
+// HORARIOS DE LOS TURNOS (si los cambias, cámbialos también en Code.gs)
+const HORA_MANANA = 7;    // mañana desde las 07:00
+const HORA_TARDE  = 13;   // tarde desde las 13:00
+const HORA_NOCHE  = 20;   // noche desde las 20:00 hasta las 06:59 del día siguiente
+
+const TURNOS = {
+  manana:{ nombre:'☀️ Mañana', horas:`${pad(HORA_MANANA)}:00 a ${pad(HORA_TARDE-1)}:59` },
+  tarde: { nombre:'🌤️ Tarde',  horas:`${pad(HORA_TARDE)}:00 a ${pad(HORA_NOCHE-1)}:59` },
+  noche: { nombre:'🌙 Noche',  horas:`${pad(HORA_NOCHE)}:00 a ${pad(HORA_MANANA-1)}:59 (día siguiente)` }
+};
+const ETIQUETAS = { disp:'0-9 Disponible', nodisp:'0-8 No disponible', nr:'NR No responde' };
+const CLASES = { disp:'disp', nodisp:'nodisp', nr:'nr' };
+const COMP_NOM = { '1':'1ª Compañía', '2':'2ª Compañía', '3':'3ª Compañía', '':'Sin compañía' };
+const ADMIN_TABS = ['voluntarios','historial','reporte','config'];
+const REFRESCO_MS = 10000; // actualización automática (voto en tiempo real)
+
+let API_URL = localStorage.getItem(LS_URL) || 'https://script.google.com/macros/s/AKfycbxj2Cu0HEQoTuDrGoDSpP-XAl6Vz-Eup2JfS00fpepSCzrlEg5ehgzmGA7-6PdC4mEh/exec';
+let yoId = localStorage.getItem(LS_YO) || '';
+let adminClave = localStorage.getItem(LS_ADM) || '';
+let isAdmin = false; // solo se activa cuando el servidor confirma la clave
+let db = {voluntarios:[], votos:{}, ausencias:[]};
+try { db = JSON.parse(localStorage.getItem(LS_CACHE)) || db; } catch(e){}
+db.ausencias = db.ausencias || [];
+
+// Turno y fecha "operativa" según la hora actual (la noche de madrugada pertenece al día anterior)
+function turnoYFechaActual(){
+  const d = new Date(), h = d.getHours();
+  if(h < HORA_MANANA){ d.setDate(d.getDate()-1); return {fecha:iso(d), turno:'noche'}; }
+  if(h < HORA_TARDE) return {fecha:iso(d), turno:'manana'};
+  if(h < HORA_NOCHE) return {fecha:iso(d), turno:'tarde'};
+  return {fecha:iso(d), turno:'noche'};
+}
+const inicio = turnoYFechaActual();
+let fechaSel = inicio.fecha, turnoSel = inicio.turno;
+
+// Sincroniza la fecha/turno seleccionados con la hora actual. Devuelve true si cambió.
+function refrescarTurnoActual(){
+  const a = turnoYFechaActual();
+  if(a.fecha !== fechaSel || a.turno !== turnoSel){ fechaSel = a.fecha; turnoSel = a.turno; return true; }
+  return false;
+}
+
+// ---------- Ausencias → votos 0-8 automáticos ----------
+// vEf = votos reales + 0-8 automáticos de las ausencias (solo hasta el día de hoy)
+let vEf = {}, virt = new Set();
+function construirEfectivos(){
+  vEf = JSON.parse(JSON.stringify(db.votos || {}));
+  virt = new Set();
+  const hoy = turnoYFechaActual().fecha;
+  (db.ausencias || []).forEach(a=>{
+    if(!db.voluntarios.some(v=>v.id===a.volId)) return;
+    const [y,m,d] = a.desde.split('-').map(Number);
+    const fin = a.hasta < hoy ? a.hasta : hoy;
+    const cur = new Date(y, m-1, d, 12);
+    for(let n=0; n<400; n++){
+      const f = iso(cur);
+      if(f > fin) break;
+      vEf[f] = vEf[f] || {};
+      Object.keys(TURNOS).forEach(t=>{
+        vEf[f][t] = vEf[f][t] || {};
+        vEf[f][t][a.volId] = 'nodisp';
+        virt.add(f+'|'+t+'|'+a.volId);
+      });
+      cur.setDate(cur.getDate()+1);
+    }
+  });
+}
+const votosDe = (fecha, turno) => ((vEf[fecha]||{})[turno]) || {};
+const ausenciaDe = (volId, fecha) => (db.ausencias||[]).find(a=>a.volId===volId && a.desde<=fecha && fecha<=a.hasta);
+const idCmp = (a,b) => String(a.id).localeCompare(String(b.id),'es',{numeric:true});
+// Los que votaron 0-9 en el turno indicado van primero; el resto queda ordenado por ID de Sheets
+function ordenarPorVoto(lista, votos){
+  const rank = v => votos[v.id]==='disp' ? 0 : 1;
+  return [...lista].sort((a,b)=>rank(a)-rank(b) || idCmp(a,b));
+}
+const compDe = v => ['1','2','3'].includes(String(v.compania)) ? String(v.compania) : '';
+
+// ---------- API ----------
+async function apiGet(){
+  const r = await fetch(API_URL + '?action=init');
+  const data = await r.json();
+  if(!data.ok) throw new Error(data.error || 'Respuesta inválida');
+  db = { voluntarios:data.voluntarios||[], votos:data.votos||{}, ausencias:data.ausencias||[] };
+  localStorage.setItem(LS_CACHE, JSON.stringify(db));
+}
+async function apiPost(obj){
+  // Si hay clave de administrador, se envía siempre; el servidor la exige solo en las acciones de administrador
+  const r = await fetch(API_URL, { method:'POST', body:JSON.stringify(Object.assign({clave:adminClave}, obj)) });
+  const data = await r.json();
+  if(!data.ok) throw new Error(data.error || 'Error del servidor');
+  return data;
+}
+function setEstado(txt, cls){
+  document.getElementById('dotEstado').className = 'dot ' + (cls||'');
+  document.getElementById('txtEstado').textContent = txt;
+}
+// El cuadro de compañía de la lista no se redibuja mientras el administrador lo está usando
+const usandoSelectorLista = () => {
+  const a = document.activeElement;
+  return !!(a && a.closest && a.closest('#tablaVoluntarios'));
+};
+async function sincronizar(avisar, silencioso){
+  if(!API_URL){ setEstado('Sin configurar — ve a ⚙️ Configuración','off'); return false; }
+  if(!silencioso) setEstado('Sincronizando…','');
+  try{
+    await apiGet();
+    setEstado('Conectado ✔ ' + new Date().toLocaleTimeString('es-ES'),'on');
+    if(!(silencioso && usandoSelectorLista())) refrescarTodo();
+    if(avisar) mostrarMsg('msgVoto','Datos actualizados ✔',true);
+    return true;
+  }catch(e){
+    setEstado('Error de conexión: ' + e.message,'off');
+    if(avisar) mostrarMsg('msgVoto','No se pudo conectar: ' + e.message,false);
+    return false;
+  }
+}
+
+// ---------- Administrador ----------
+function aplicarRol(){
+  document.body.classList.toggle('is-admin', isAdmin);
+  document.getElementById('btnAdmin').textContent = isAdmin ? '🔓 Salir de administrador' : '🔐 Administrador';
+}
+function toggleAdmin(){
+  if(isAdmin){
+    if(!confirm('¿Salir del modo administrador en este dispositivo?')) return;
+    adminClave = ''; isAdmin = false; localStorage.removeItem(LS_ADM);
+    aplicarRol(); refrescarTodo();
+  } else {
+    document.getElementById('inpClave').value = '';
+    document.getElementById('modalAdm').classList.add('show');
+    setTimeout(()=>document.getElementById('inpClave').focus(), 50);
+  }
+}
+function cerrarModalAdm(){ document.getElementById('modalAdm').classList.remove('show'); }
+async function entrarAdmin(){
+  const c = document.getElementById('inpClave').value;
+  if(!c) return mostrarMsg('msgAdm','Escribe la clave.',false);
+  if(!API_URL) return mostrarMsg('msgAdm','Falta la conexión con Google Sheets.',false);
+  try{
+    await apiPost({action:'login', clave:c});
+    adminClave = c; isAdmin = true; localStorage.setItem(LS_ADM, c);
+    cerrarModalAdm(); aplicarRol(); refrescarTodo();
+  }catch(e){ mostrarMsg('msgAdm', e.message, false); }
+}
+async function verificarAdmin(){
+  try{
+    await apiPost({action:'login'});
+    isAdmin = true; aplicarRol(); refrescarTodo();
+  }catch(e){
+    // Solo se borra la clave guardada si el servidor la rechazó (no si simplemente no hay internet)
+    if(/Clave/.test(e.message)){ adminClave=''; localStorage.removeItem(LS_ADM); }
+  }
+}
+
+// ---------- Config ----------
+function guardarUrl(){
+  const u = document.getElementById('inpUrl').value.trim();
+  if(!u.startsWith('http')) return mostrarMsg('msgCfg','Pega una URL válida.',false);
+  API_URL = u; localStorage.setItem(LS_URL,u);
+  mostrarMsg('msgCfg','Probando conexión…',true);
+  sincronizar().then(ok => mostrarMsg('msgCfg', ok ? '¡Conexión exitosa! Ya pueden votar ✔' : 'No se conectó. Revisa la URL y que el Web App esté desplegado para "Cualquier persona".', ok));
+}
+function borrarUrl(){
+  if(!confirm('¿Borrar la configuración de este dispositivo?')) return;
+  API_URL=''; localStorage.removeItem(LS_URL);
+  document.getElementById('inpUrl').value='';
+  setEstado('Sin configurar','off');
+}
+
+// ---------- Navegación ----------
+function tabActiva(){ return document.querySelector('nav button.active').dataset.tab; }
+function showTab(t){
+  if(ADMIN_TABS.includes(t) && !isAdmin) t = 'votar'; // los voluntarios solo ven Votar y Ausencias
+  construirEfectivos();
+  document.querySelectorAll('main > section').forEach(s=>s.style.display='none');
+  document.getElementById('tab-'+t).style.display='block';
+  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('active', b.dataset.tab===t));
+  if(t==='votar') pintarVotacion();
+  if(t==='voluntarios') pintarVoluntarios();
+  if(t==='ausencias') pintarAusencias();
+  if(t==='historial'){ llenarMeses('filtroMes'); pintarHistorial(); }
+  if(t==='reporte'){ llenarMeses('mesReporte'); pintarReporte(); }
+  if(t==='config') document.getElementById('inpUrl').value = API_URL;
+}
+function refrescarTodo(){
+  showTab(tabActiva());
+}
+function mostrarMsg(id, texto, ok){
+  const el = document.getElementById(id);
+  el.textContent = texto; el.className = 'msg show ' + (ok?'ok':'err');
+  setTimeout(()=>el.className='msg', 3500);
+}
+
+// ---------- Avatar ----------
+function avatar(v){
+  if(v.foto) return `<img class="av" src="${esc(v.foto)}" alt="" onerror="this.outerHTML='<span class=&quot;av&quot;>${esc((v.nombre||'?').charAt(0).toUpperCase())}</span>'">`;
+  const ini = v.nombre.trim().split(/\s+/).slice(0,2).map(p=>p.charAt(0).toUpperCase()).join('');
+  return `<span class="av">${esc(ini)}</span>`;
+}
+
+// ---------- Yo soy ----------
+function llenarSelYo(){
+  if(document.activeElement && document.activeElement.id==='selYo') return;
+  if(yoId && !db.voluntarios.some(v=>v.id===yoId)) yoId = '';
+  const primera = isAdmin ? '<option value="">— Todos (modo administrador) —</option>' : '<option value="">— Elige tu nombre —</option>';
+  document.getElementById('selYo').innerHTML = primera +
+    db.voluntarios.map(v=>`<option value="${esc(v.id)}" ${v.id===yoId?'selected':''}>${esc(v.nombre)}</option>`).join('');
+}
+function cambiarYo(){
+  yoId = document.getElementById('selYo').value;
+  localStorage.setItem(LS_YO, yoId);
+  pintarVotacion();
+}
+
+// ---------- Voluntarios (administrador) ----------
+async function agregarVoluntario(){
+  const id = document.getElementById('nuevoId').value.trim();
+  const nombre = document.getElementById('nuevoNombre').value.trim();
+  const compania = document.getElementById('nuevaComp').value;
+  const foto = document.getElementById('nuevaFoto').value.trim();
+  if(!nombre) return mostrarMsg('msgVol','Escribe un nombre.',false);
+  try{
+    await apiPost({action:'addVol', id, nombre, compania, foto});
+    ['nuevoId','nuevoNombre','nuevaFoto'].forEach(x=>document.getElementById(x).value='');
+    await sincronizar();
+    mostrarMsg('msgVol','Voluntario agregado ✔',true);
+  }catch(e){ mostrarMsg('msgVol','Error: '+e.message,false); }
+}
+async function eliminarVoluntario(id){
+  if(!confirm('¿Eliminar este voluntario? Sus votos se mantienen en el historial.')) return;
+  try{ await apiPost({action:'delVol', id}); await sincronizar(); }
+  catch(e){ alert('Error: '+e.message); }
+}
+async function cambiarFoto(id){
+  const v = db.voluntarios.find(x=>x.id===id);
+  const url = prompt('URL de la foto de ' + v.nombre + ' (vacío para quitarla):', v.foto || '');
+  if(url===null) return;
+  try{ await apiPost({action:'setFoto', id, foto:url.trim()}); await sincronizar(); }
+  catch(e){ alert('Error: '+e.message); }
+}
+async function cambiarCompania(id, compania){
+  try{ await apiPost({action:'setCompania', id, compania}); await sincronizar(); }
+  catch(e){ alert('Error: '+e.message); await sincronizar(); }
+}
+function pintarVoluntarios(){
+  const tb = document.getElementById('tablaVoluntarios');
+  const {fecha:hoy, turno:turnoAct} = turnoYFechaActual();
+  const icono = TURNOS[turnoAct].nombre.split(' ')[0];
+  document.getElementById('avisoLista').textContent =
+    `Turno actual: ${TURNOS[turnoAct].nombre}. Los que votaron 0-9 aparecen primero en su compañía. Se actualiza solo cada ${REFRESCO_MS/1000} segundos.`;
+  if(!db.voluntarios.length){
+    tb.innerHTML = '<tr><td colspan="5" style="color:#b0bec5">No hay voluntarios registrados todavía.</td></tr>';
+    return;
+  }
+  const votosAct = votosDe(hoy, turnoAct);
+  let html = '';
+  ['1','2','3',''].forEach(c=>{
+    const grupo = ordenarPorVoto(db.voluntarios.filter(v=>compDe(v)===c), votosAct);
+    if(!grupo.length) return;
+    const nDisp = grupo.filter(v=>votosAct[v.id]==='disp').length;
+    html += `<tr class="grupo"><td colspan="5">${COMP_NOM[c]} — ${nDisp} de ${grupo.length} disponibles (${icono})</td></tr>`;
+    html += grupo.map(v=>{
+      const chips = Object.keys(TURNOS).map(t=>{
+        const voto = votosDe(hoy,t)[v.id];
+        const trabajo = virt.has(hoy+'|'+t+'|'+v.id) ? '🧰 ' : '';
+        return `<span class="tag ${voto?CLASES[voto]:'sin'} ${t===turnoAct?'ahora':''}" title="${TURNOS[t].nombre}">${TURNOS[t].nombre.split(' ')[0]} ${trabajo}${voto?(voto==='nr'?'NR':voto==='disp'?'0-9':'0-8'):'—'}</span>`;
+      }).join(' ');
+      const opts = ['','1','2','3'].map(k=>`<option value="${k}" ${k===c?'selected':''}>${COMP_NOM[k]}</option>`).join('');
+      return `<tr><td class="idcol">${esc(v.id)}</td><td><div class="nm">${avatar(v)}${esc(v.nombre)}</div></td><td>${chips}</td>
+        <td><select onchange="cambiarCompania('${esc(v.id)}',this.value)">${opts}</select></td>
+        <td><button class="btn sec" onclick="cambiarFoto('${esc(v.id)}')">🖼️</button>
+            <button class="btn sec" onclick="eliminarVoluntario('${esc(v.id)}')">🗑️</button></td></tr>`;
+    }).join('');
+  });
+  tb.innerHTML = html;
+}
+
+// ---------- Ausencias por trabajo ----------
+function llenarSelAus(){
+  const sel = document.getElementById('ausVol');
+  if(isAdmin){
+    const prev = sel.value || yoId;
+    sel.innerHTML = '<option value="">— Elige voluntario —</option>' +
+      db.voluntarios.map(v=>`<option value="${esc(v.id)}" ${v.id===prev?'selected':''}>${esc(v.nombre)}</option>`).join('');
+  } else {
+    // El voluntario solo puede programar ausencias para sí mismo
+    const yo = db.voluntarios.find(x=>x.id===yoId);
+    sel.innerHTML = yo ? `<option value="${esc(yo.id)}">${esc(yo.nombre)}</option>`
+                       : '<option value="">— Primero elige tu nombre en Votar —</option>';
+  }
+  const desde = document.getElementById('ausDesde');
+  if(!desde.value) desde.value = turnoYFechaActual().fecha;
+}
+async function programarAusencia(){
+  const volId = document.getElementById('ausVol').value;
+  const desde = document.getElementById('ausDesde').value;
+  const hasta = document.getElementById('ausHasta').value;
+  const motivo = document.getElementById('ausMotivo').value.trim() || 'Trabajo';
+  if(!volId) return mostrarMsg('msgAus', isAdmin ? 'Elige un voluntario.' : 'Primero elige tu nombre en la pestaña Votar.',false);
+  if(!desde || !hasta) return mostrarMsg('msgAus','Indica la fecha desde y hasta.',false);
+  if(hasta < desde) return mostrarMsg('msgAus','La fecha "hasta" no puede ser anterior a "desde".',false);
+  try{
+    await apiPost({action:'addAus', volId, desde, hasta, motivo});
+    await sincronizar();
+    document.getElementById('ausHasta').value = '';
+    mostrarMsg('msgAus','Ausencia programada ✔',true);
+  }catch(e){ mostrarMsg('msgAus','Error: '+e.message,false); }
+}
+async function eliminarAusencia(id){
+  if(!confirm('¿Quitar esta ausencia? Los 0-8 automáticos de esos días desaparecen (los votos reales se conservan).')) return;
+  try{ await apiPost({action:'delAus', id}); await sincronizar(); }
+  catch(e){ alert('Error: '+e.message); }
+}
+function pintarAusencias(){
+  llenarSelAus();
+  const hoy = turnoYFechaActual().fecha;
+  // El voluntario ve solo sus propias ausencias; el administrador ve todas
+  const lista = [...(db.ausencias||[])].filter(a=>isAdmin || a.volId===yoId).sort((a,b)=>b.desde.localeCompare(a.desde));
+  document.getElementById('tablaAusencias').innerHTML = lista.length ? lista.map(a=>{
+    const v = db.voluntarios.find(x=>x.id===a.volId);
+    const est = a.hasta < hoy ? ['Finalizada','sin'] : a.desde <= hoy ? ['En curso','aus'] : ['Programada','nr'];
+    return `<tr><td>${esc(v ? v.nombre : (a.nombre||'(eliminado)'))}</td><td>${fmtFecha(a.desde)}</td><td>${fmtFecha(a.hasta)}</td>
+      <td>${esc(a.motivo)}</td><td><span class="tag ${est[1]}">${est[0]}</span></td>
+      <td><button class="btn sec" onclick="eliminarAusencia('${esc(a.id)}')">🗑️</button></td></tr>`;
+  }).join('') : '<tr><td colspan="6" style="color:#b0bec5">No hay ausencias programadas.</td></tr>';
+}
+
+// ---------- Votación ----------
+async function votar(volId, voto){
+  // Si cambió el turno mientras la pantalla estaba abierta, no se registra el voto
+  if(refrescarTurnoActual()){
+    pintarVotacion();
+    return mostrarMsg('msgVoto','El turno cambió. Revisa la pantalla y vota de nuevo.',false);
+  }
+  try{
+    await apiPost({action:'voto', fecha:fechaSel, turno:turnoSel, volId, voto});
+    await sincronizar();
+    mostrarMsg('msgVoto','Voto registrado ✔',true);
+  }catch(e){ mostrarMsg('msgVoto','Error al guardar: '+e.message,false); }
+}
+function pintarVotacion(){
+  refrescarTurnoActual();
+  document.getElementById('lblFecha').textContent = fmtFecha(fechaSel);
+  // Solo el turno vigente está habilitado; los otros se ven apagados
+  document.getElementById('turnosBox').innerHTML = Object.entries(TURNOS).map(([k,t])=>
+    `<button class="${k===turnoSel?'active':''}" ${k===turnoSel?'':'disabled'}>${t.nombre}<small>${t.horas}</small></button>`).join('');
+  document.getElementById('avisoTurno').textContent =
+    `Turno habilitado ahora: ${TURNOS[turnoSel].nombre} (${TURNOS[turnoSel].horas}). Los otros turnos se habilitan en su horario.`;
+  llenarSelYo();
+  const votos = votosDe(fechaSel, turnoSel);
+  // Voluntario: solo se ve a sí mismo. Administrador: todos o el que elija.
+  const lista = yoId ? db.voluntarios.filter(v=>v.id===yoId) : (isAdmin ? db.voluntarios : []);
+  if(!yoId && !isAdmin){
+    document.getElementById('listaVotacion').innerHTML = '<p style="color:#b0bec5">Elige tu nombre en "Yo soy" para votar.</p>';
+    return;
+  }
+  const filaVot = (v, conId) => {
+    const aus = ausenciaDe(v.id, fechaSel);
+    const idTxt = conId ? `<span class="idcol" style="max-width:none">${esc(v.id)}</span>` : '';
+    if(aus){
+      return `<div class="voter ${yoId?'me':''}">
+        <span class="name nm">${idTxt}${avatar(v)}${esc(v.nombre)}</span>
+        <span class="tag aus">🧰 Ausente por ${esc(aus.motivo||'trabajo')} hasta el ${fmtFecha(aus.hasta)} · 0-8</span>
+      </div>`;
+    }
+    const voto = votos[v.id];
+    return `<div class="voter ${yoId?'me':''}">
+      <span class="name nm">${idTxt}${avatar(v)}${esc(v.nombre)}</span>
+      <button class="v-btn-disp ${voto==='disp'?'sel':''}" onclick="votar('${esc(v.id)}','disp')">0-9 Disponible</button>
+      <button class="v-btn-nodisp ${voto==='nodisp'?'sel':''}" onclick="votar('${esc(v.id)}','nodisp')">0-8 No disponible</button>
+      <button class="v-btn-nr ${voto==='nr'?'sel':''}" onclick="votar('${esc(v.id)}','nr')">NR</button>
+    </div>`;
+  };
+  let html;
+  if(!lista.length){
+    html = '<p style="color:#b0bec5">No hay voluntarios registrados todavía.</p>';
+  } else if(yoId){
+    html = lista.map(v=>filaVot(v,false)).join('');
+  } else {
+    html = ['1','2','3',''].map(c=>{
+      const g = ordenarPorVoto(db.voluntarios.filter(v=>compDe(v)===c), votos);
+      if(!g.length) return '';
+      const n = g.filter(v=>votos[v.id]==='disp').length;
+      return `<div class="grupo-h">${COMP_NOM[c]} — ${n} de ${g.length} disponibles</div>` + g.map(v=>filaVot(v,true)).join('');
+    }).join('');
+  }
+  document.getElementById('listaVotacion').innerHTML = html;
+}
+
+// ---------- Meses ----------
+function llenarMeses(selId){
+  const sel = document.getElementById(selId), actual = sel.value;
+  const meses = [...new Set(Object.keys(vEf).map(f=>f.slice(0,7)))].sort().reverse();
+  sel.innerHTML = meses.length ? meses.map(m=>{
+    const [y,mm]=m.split('-');
+    return `<option value="${m}">${new Date(y,mm-1).toLocaleDateString('es-ES',{month:'long',year:'numeric'})}</option>`;
+  }).join('') : '<option value="">-- sin datos --</option>';
+  if(actual && meses.includes(actual)) sel.value = actual;
+}
+
+// ---------- Historial ----------
+function pintarHistorial(){
+  const mes = document.getElementById('filtroMes').value;
+  const tb = document.getElementById('tablaHistorial');
+  if(!mes){ tb.innerHTML='<tr><td colspan="5" style="color:#b0bec5">Sin registros.</td></tr>'; return; }
+  const filas = [], orden = Object.keys(TURNOS);
+  Object.keys(vEf).filter(f=>f.startsWith(mes)).sort().forEach(fecha=>{
+    orden.forEach(t=>{
+      Object.entries((vEf[fecha]||{})[t]||{}).forEach(([vid,voto])=>{
+        const v = db.voluntarios.find(x=>x.id===vid);
+        const porTrabajo = virt.has(fecha+'|'+t+'|'+vid);
+        filas.push(`<tr><td>${esc(fecha)}</td><td>${TURNOS[t].nombre}</td><td class="idcol">${esc(vid)}</td><td>${v?esc(v.nombre):'(eliminado)'}</td>
+          <td><span class="tag ${CLASES[voto]}">${ETIQUETAS[voto]}</span>${porTrabajo?' <span class="tag aus">🧰 trabajo</span>':''}</td></tr>`);
+      });
+    });
+  });
+  tb.innerHTML = filas.join('') || '<tr><td colspan="5" style="color:#b0bec5">Sin registros este mes.</td></tr>';
+}
+async function borrarMes(){
+  const mes = document.getElementById('filtroMes').value;
+  if(!mes || !confirm('¿Borrar todos los votos de este mes? Esto también los borra de Google Sheets. (Las ausencias por trabajo no se borran; se quitan en la pestaña Ausencias.)')) return;
+  try{ await apiPost({action:'borrarMes', mes}); await sincronizar(); }
+  catch(e){ alert('Error: '+e.message); }
+}
+
+// ---------- Reporte ----------
+function calcularReporte(mes, filtroTurno, filtroComp){
+  const conteo = {};
+  Object.keys(vEf).filter(f=>f.startsWith(mes)).forEach(fecha=>{
+    Object.entries(vEf[fecha]).forEach(([t,porVol])=>{
+      if(filtroTurno!=='todos' && t!==filtroTurno) return;
+      Object.entries(porVol).forEach(([vid,voto])=>{
+        conteo[vid] = conteo[vid] || {disp:0,nodisp:0,nr:0};
+        if(conteo[vid][voto]!==undefined) conteo[vid][voto]++;
+      });
+    });
+  });
+  const vols = db.voluntarios.filter(v=> !filtroComp || filtroComp==='todas' || compDe(v)===(filtroComp==='sin'?'':filtroComp));
+  return vols.map(v=>{
+    const c = conteo[v.id] || {disp:0,nodisp:0,nr:0};
+    const total = c.disp+c.nodisp+c.nr;
+    const pAs = total ? Math.round(c.disp/total*100) : 0;
+    const pNd = total ? Math.round(c.nodisp/total*100) : 0;
+    const pNr = total ? Math.round(c.nr/total*100) : 0;
+    return {v,c,total,pAs,pIn:total?100-pAs:0,pNd,pNr};
+  });
+}
+function pintarReporte(){
+  const mes = document.getElementById('mesReporte').value;
+  const turno = document.getElementById('turnoReporte').value;
+  const res = document.getElementById('resumenReporte'), tb = document.getElementById('tablaReporte');
+  if(!mes){ res.innerHTML='<p style="color:#b0bec5">Sin datos todavía.</p>'; tb.innerHTML=''; return; }
+  const comp = document.getElementById('compReporte').value;
+  const filas = calcularReporte(mes, turno, comp);
+  const fila = f=>`<tr>
+    <td class="idcol">${esc(f.v.id)}</td>
+    <td><div class="nm">${avatar(f.v)}${esc(f.v.nombre)}</div></td>
+    <td class="ok">${f.c.disp}</td><td class="bad">${f.c.nodisp}</td><td class="gray">${f.c.nr}</td>
+    <td style="min-width:170px"><strong class="ok">${f.pAs}%</strong>
+      <div class="pct-bar"><div class="pct-fill" style="width:${f.pAs}%"></div><div class="pct-bad" style="width:${f.pNd}%"></div><div class="pct-nr" style="width:${f.pNr}%"></div></div></td>
+    <td><strong class="bad">${f.pIn}%</strong></td></tr>`;
+  let htmlR = '';
+  ['1','2','3',''].forEach(c=>{
+    const g = filas.filter(f=>compDe(f.v)===c).sort((a,b)=>idCmp(a.v,b.v));
+    if(!g.length) return;
+    htmlR += `<tr class="grupo"><td colspan="7">${COMP_NOM[c]}</td></tr>` + g.map(fila).join('');
+  });
+  tb.innerHTML = htmlR || '<tr><td colspan="7" style="color:#b0bec5">Sin voluntarios.</td></tr>';
+  const tot = filas.reduce((a,f)=>({disp:a.disp+f.c.disp,nodisp:a.nodisp+f.c.nodisp,nr:a.nr+f.c.nr}),{disp:0,nodisp:0,nr:0});
+  const T = tot.disp+tot.nodisp+tot.nr;
+  const p = n => Math.round(n/T*100);
+  res.innerHTML = T ? `<div class="grid3">
+    <div class="card" style="margin:0"><p class="big ok">${p(tot.disp)}%</p><p>Disponibles (${tot.disp})</p></div>
+    <div class="card" style="margin:0"><p class="big bad">${p(tot.nodisp)}%</p><p>No disponibles (${tot.nodisp})</p></div>
+    <div class="card" style="margin:0"><p class="big gray">${p(tot.nr)}%</p><p>No responden (${tot.nr})</p></div>
+  </div>` : '<p style="color:#b0bec5">Sin votos registrados para este filtro.</p>';
+}
+function exportarCSV(){
+  const mes = document.getElementById('mesReporte').value;
+  const turno = document.getElementById('turnoReporte').value;
+  if(!mes) return alert('Selecciona un mes con datos.');
+  const comp = document.getElementById('compReporte').value;
+  let csv = 'ID;Compañía;Voluntario;Disponible;No disponible;NR;Total;% Asistencia;% Inasistencia\n';
+  calcularReporte(mes, turno, comp).sort((a,b)=>(compDe(a.v)||'9').localeCompare(compDe(b.v)||'9') || idCmp(a.v,b.v)).forEach(f=>{
+    csv += `${f.v.id};${COMP_NOM[compDe(f.v)]};${f.v.nombre};${f.c.disp};${f.c.nodisp};${f.c.nr};${f.total};${f.pAs}%;${f.pIn}%\n`;
+  });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}));
+  a.download = `asistencia_${mes}_${turno}.csv`; a.click();
+}
+
+// ---------- Init ----------
+aplicarRol();
+document.getElementById('inpUrl').value = API_URL;
+showTab('votar');
+if(API_URL){
+  sincronizar();
+  if(adminClave) verificarAdmin();
+} else {
+  setEstado('Sin configurar','off');
+}
+// Cada 15 s se actualizan los votos en "Votar" y en la lista de "Voluntarios" (voto en tiempo real)
+setInterval(()=>{
+  if(!API_URL || document.hidden) return;
+  const t = tabActiva();
+  if(t==='votar' || t==='voluntarios') sincronizar(false, true);
+}, REFRESCO_MS);
+// Cada 20 s se revisa si cambió el turno para habilitar el que corresponde
+setInterval(()=>{ if(refrescarTurnoActual() && (tabActiva()==='votar' || tabActiva()==='voluntarios')) refrescarTodo(); }, 20000);
+</script>
+</body>
+</html>
