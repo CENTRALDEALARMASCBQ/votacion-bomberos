@@ -26,9 +26,11 @@
   th { background:#2f3a5c; padding:10px; text-align:left; }
   td { padding:9px 10px; border-bottom:1px solid #2f3a5c; }
   tr:hover td { background:#2a3352; }
+  tr.grupo td, tr.grupo:hover td { background:#34406a; font-weight:700; color:#ffd54f; padding:10px; }
   .tag { padding:3px 10px; border-radius:20px; font-size:12px; font-weight:700; display:inline-block; }
   .tag.disp { background:#2e7d32; } .tag.nodisp { background:#c62828; } .tag.nr { background:#757575; } .tag.sin { background:#455a64; }
   .tag.aus { background:#ef6c00; }
+  .tag.ahora { outline:2px solid #ffd54f; }
   .pct-bar { background:#1a1f2e; border-radius:6px; height:14px; overflow:hidden; margin-top:4px; display:flex; }
   .pct-fill { height:100%; background:linear-gradient(90deg,#66bb6a,#2e7d32); }
   .pct-bad { height:100%; background:#c62828; }
@@ -58,6 +60,14 @@
   .dot { width:10px; height:10px; border-radius:50%; background:#757575; display:inline-block; }
   .dot.on { background:#66bb6a; } .dot.off { background:#ef5350; }
   .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  .idcol { font-size:12px; color:#b0bec5; word-break:break-all; max-width:110px; }
+  .modal { position:fixed; inset:0; background:rgba(0,0,0,.65); display:none; align-items:center; justify-content:center; z-index:50; padding:16px; }
+  .modal.show { display:flex; }
+  .modal-box { background:#232941; border-radius:12px; padding:22px; width:100%; max-width:380px; box-shadow:0 4px 18px rgba(0,0,0,.5); }
+  .modal-box h2 { font-size:17px; margin-bottom:14px; color:#ff8a80; }
+  .modal-box input { width:100%; margin-bottom:12px; }
+  /* Lo que solo ve el administrador */
+  body:not(.is-admin) .adm { display:none !important; }
   @media(max-width:640px){ .grid3{grid-template-columns:1fr;} main{padding:14px;} .turnos button{min-width:100%;} }
   @media print { nav, .syncbar, header, .noprint { display:none !important; } body { background:#fff; color:#000; } .card { box-shadow:none; } }
 </style>
@@ -75,15 +85,16 @@
   <span class="dot" id="dotEstado"></span>
   <span id="txtEstado">Sin configurar</span>
   <button class="btn sec" style="padding:6px 12px;font-size:12px" onclick="sincronizar(true)">🔄 Sincronizar</button>
+  <button class="btn sec" id="btnAdmin" style="padding:6px 12px;font-size:12px;margin-left:auto" onclick="toggleAdmin()">🔐 Administrador</button>
 </div>
 
 <nav>
   <button class="active" data-tab="votar" onclick="showTab('votar')">🗳️ Votar</button>
-  <button data-tab="voluntarios" onclick="showTab('voluntarios')">👥 Voluntarios</button>
+  <button class="adm" data-tab="voluntarios" onclick="showTab('voluntarios')">👥 Voluntarios</button>
   <button data-tab="ausencias" onclick="showTab('ausencias')">🧰 Ausencias</button>
-  <button data-tab="historial" onclick="showTab('historial')">📅 Historial</button>
-  <button data-tab="reporte" onclick="showTab('reporte')">📊 Reporte mensual</button>
-  <button data-tab="config" onclick="showTab('config')">⚙️ Configuración</button>
+  <button class="adm" data-tab="historial" onclick="showTab('historial')">📅 Historial</button>
+  <button class="adm" data-tab="reporte" onclick="showTab('reporte')">📊 Reporte mensual</button>
+  <button class="adm" data-tab="config" onclick="showTab('config')">⚙️ Configuración</button>
 </nav>
 
 <main>
@@ -109,21 +120,30 @@
     </div>
   </section>
 
-  <!-- VOLUNTARIOS -->
+  <!-- VOLUNTARIOS (solo administrador) -->
   <section id="tab-voluntarios" style="display:none">
     <div class="card">
       <h2>Agregar voluntario</h2>
       <div class="row">
+        <input id="nuevoId" placeholder="ID (opcional)" style="width:120px">
         <input id="nuevoNombre" placeholder="Nombre del voluntario" style="flex:1;min-width:200px">
+        <select id="nuevaComp">
+          <option value="">Sin compañía</option>
+          <option value="1">1ª Compañía</option>
+          <option value="2">2ª Compañía</option>
+          <option value="3">3ª Compañía</option>
+        </select>
         <input id="nuevaFoto" placeholder="URL de foto (opcional)" style="flex:1;min-width:200px">
         <button class="btn" onclick="agregarVoluntario()">➕ Agregar</button>
       </div>
+      <p style="font-size:12px;color:#b0bec5;margin-top:8px">Si dejas el ID vacío se asigna el siguiente número disponible (1, 2, 3...).</p>
       <div class="msg" id="msgVol"></div>
     </div>
     <div class="card">
       <h2>Lista de voluntarios</h2>
+      <div class="aviso" id="avisoLista"></div>
       <table>
-        <thead><tr><th>#</th><th>Nombre</th><th>Votos de hoy</th><th>Acciones</th></tr></thead>
+        <thead><tr><th>ID</th><th>Nombre</th><th>Votos de hoy</th><th>Compañía</th><th>Acciones</th></tr></thead>
         <tbody id="tablaVoluntarios"></tbody>
       </table>
     </div>
@@ -157,7 +177,7 @@
     </div>
   </section>
 
-  <!-- HISTORIAL -->
+  <!-- HISTORIAL (solo administrador) -->
   <section id="tab-historial" style="display:none">
     <div class="card">
       <h2>Historial de votos</h2>
@@ -172,7 +192,7 @@
     </div>
   </section>
 
-  <!-- REPORTE -->
+  <!-- REPORTE (solo administrador) -->
   <section id="tab-reporte" style="display:none">
     <div class="card">
       <h2>Reporte mensual de asistencia</h2>
@@ -201,7 +221,7 @@
     </div>
   </section>
 
-  <!-- CONFIG -->
+  <!-- CONFIG (solo administrador) -->
   <section id="tab-config" style="display:none">
     <div class="card">
       <h2>⚙️ Conexión con Google Sheets</h2>
@@ -219,11 +239,27 @@
       <h2>📱 Compartir con los voluntarios</h2>
       <p style="font-size:13px;color:#b0bec5">
         Envía a cada voluntario el enlace de esta página. Cada uno elige su nombre en "Yo soy" y vota en el turno que corresponda.
-        Su elección de nombre queda guardada en su celular.
+        Su elección de nombre queda guardada en su celular. Los voluntarios solo ven <strong>Votar</strong> y <strong>Ausencias</strong>.
+      </p>
+      <p style="font-size:13px;color:#b0bec5;margin-top:10px">
+        La clave de administrador se cambia en <strong>Code.gs</strong> (línea <code>ADMIN_CLAVE</code>).
       </p>
     </div>
   </section>
 </main>
+
+<!-- Ventana de acceso de administrador -->
+<div class="modal" id="modalAdm">
+  <div class="modal-box">
+    <h2>🔐 Acceso de administrador</h2>
+    <input type="password" id="inpClave" placeholder="Clave de administrador" onkeydown="if(event.key==='Enter') entrarAdmin()">
+    <div class="row">
+      <button class="btn" onclick="entrarAdmin()">Entrar</button>
+      <button class="btn sec" onclick="cerrarModalAdm()">Cancelar</button>
+    </div>
+    <div class="msg" id="msgAdm"></div>
+  </div>
+</div>
 
 <script>
 // ---------- Ayudas ----------
@@ -233,7 +269,7 @@ const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'
 const fmtFecha = f => String(f).split('-').reverse().join('/');
 
 // ---------- Constantes ----------
-const LS_URL='bomberos_url', LS_YO='bomberos_yo', LS_CACHE='bomberos_cache2';
+const LS_URL='bomberos_url', LS_YO='bomberos_yo', LS_CACHE='bomberos_cache2', LS_ADM='bomberos_admin';
 
 // HORARIOS DE LOS TURNOS (si los cambias, cámbialos también en Code.gs)
 const HORA_MANANA = 7;    // mañana desde las 07:00
@@ -247,9 +283,14 @@ const TURNOS = {
 };
 const ETIQUETAS = { disp:'0-9 Disponible', nodisp:'0-8 No disponible', nr:'NR No responde' };
 const CLASES = { disp:'disp', nodisp:'nodisp', nr:'nr' };
+const COMP_NOM = { '1':'1ª Compañía', '2':'2ª Compañía', '3':'3ª Compañía', '':'Sin compañía' };
+const ADMIN_TABS = ['voluntarios','historial','reporte','config'];
+const REFRESCO_MS = 15000; // actualización automática (voto en tiempo real)
 
 let API_URL = localStorage.getItem(LS_URL) || 'https://script.google.com/macros/s/AKfycbxj2Cu0HEQoTuDrGoDSpP-XAl6Vz-Eup2JfS00fpepSCzrlEg5ehgzmGA7-6PdC4mEh/exec';
 let yoId = localStorage.getItem(LS_YO) || '';
+let adminClave = localStorage.getItem(LS_ADM) || '';
+let isAdmin = false; // solo se activa cuando el servidor confirma la clave
 let db = {voluntarios:[], votos:{}, ausencias:[]};
 try { db = JSON.parse(localStorage.getItem(LS_CACHE)) || db; } catch(e){}
 db.ausencias = db.ausencias || [];
@@ -299,6 +340,7 @@ function construirEfectivos(){
 }
 const votosDe = (fecha, turno) => ((vEf[fecha]||{})[turno]) || {};
 const ausenciaDe = (volId, fecha) => (db.ausencias||[]).find(a=>a.volId===volId && a.desde<=fecha && fecha<=a.hasta);
+const compDe = v => ['1','2','3'].includes(String(v.compania)) ? String(v.compania) : '';
 
 // ---------- API ----------
 async function apiGet(){
@@ -309,7 +351,8 @@ async function apiGet(){
   localStorage.setItem(LS_CACHE, JSON.stringify(db));
 }
 async function apiPost(obj){
-  const r = await fetch(API_URL, { method:'POST', body:JSON.stringify(obj) });
+  // Si hay clave de administrador, se envía siempre; el servidor la exige solo en las acciones de administrador
+  const r = await fetch(API_URL, { method:'POST', body:JSON.stringify(Object.assign({clave:adminClave}, obj)) });
   const data = await r.json();
   if(!data.ok) throw new Error(data.error || 'Error del servidor');
   return data;
@@ -318,19 +361,61 @@ function setEstado(txt, cls){
   document.getElementById('dotEstado').className = 'dot ' + (cls||'');
   document.getElementById('txtEstado').textContent = txt;
 }
-async function sincronizar(avisar){
+// El cuadro de compañía de la lista no se redibuja mientras el administrador lo está usando
+const usandoSelectorLista = () => {
+  const a = document.activeElement;
+  return !!(a && a.closest && a.closest('#tablaVoluntarios'));
+};
+async function sincronizar(avisar, silencioso){
   if(!API_URL){ setEstado('Sin configurar — ve a ⚙️ Configuración','off'); return false; }
-  setEstado('Sincronizando…','');
+  if(!silencioso) setEstado('Sincronizando…','');
   try{
     await apiGet();
     setEstado('Conectado ✔ ' + new Date().toLocaleTimeString('es-ES'),'on');
-    refrescarTodo();
+    if(!(silencioso && usandoSelectorLista())) refrescarTodo();
     if(avisar) mostrarMsg('msgVoto','Datos actualizados ✔',true);
     return true;
   }catch(e){
     setEstado('Error de conexión: ' + e.message,'off');
     if(avisar) mostrarMsg('msgVoto','No se pudo conectar: ' + e.message,false);
     return false;
+  }
+}
+
+// ---------- Administrador ----------
+function aplicarRol(){
+  document.body.classList.toggle('is-admin', isAdmin);
+  document.getElementById('btnAdmin').textContent = isAdmin ? '🔓 Salir de administrador' : '🔐 Administrador';
+}
+function toggleAdmin(){
+  if(isAdmin){
+    if(!confirm('¿Salir del modo administrador en este dispositivo?')) return;
+    adminClave = ''; isAdmin = false; localStorage.removeItem(LS_ADM);
+    aplicarRol(); refrescarTodo();
+  } else {
+    document.getElementById('inpClave').value = '';
+    document.getElementById('modalAdm').classList.add('show');
+    setTimeout(()=>document.getElementById('inpClave').focus(), 50);
+  }
+}
+function cerrarModalAdm(){ document.getElementById('modalAdm').classList.remove('show'); }
+async function entrarAdmin(){
+  const c = document.getElementById('inpClave').value;
+  if(!c) return mostrarMsg('msgAdm','Escribe la clave.',false);
+  if(!API_URL) return mostrarMsg('msgAdm','Falta la conexión con Google Sheets.',false);
+  try{
+    await apiPost({action:'login', clave:c});
+    adminClave = c; isAdmin = true; localStorage.setItem(LS_ADM, c);
+    cerrarModalAdm(); aplicarRol(); refrescarTodo();
+  }catch(e){ mostrarMsg('msgAdm', e.message, false); }
+}
+async function verificarAdmin(){
+  try{
+    await apiPost({action:'login'});
+    isAdmin = true; aplicarRol(); refrescarTodo();
+  }catch(e){
+    // Solo se borra la clave guardada si el servidor la rechazó (no si simplemente no hay internet)
+    if(/Clave/.test(e.message)){ adminClave=''; localStorage.removeItem(LS_ADM); }
   }
 }
 
@@ -350,7 +435,9 @@ function borrarUrl(){
 }
 
 // ---------- Navegación ----------
+function tabActiva(){ return document.querySelector('nav button.active').dataset.tab; }
 function showTab(t){
+  if(ADMIN_TABS.includes(t) && !isAdmin) t = 'votar'; // los voluntarios solo ven Votar y Ausencias
   construirEfectivos();
   document.querySelectorAll('main > section').forEach(s=>s.style.display='none');
   document.getElementById('tab-'+t).style.display='block';
@@ -363,7 +450,7 @@ function showTab(t){
   if(t==='config') document.getElementById('inpUrl').value = API_URL;
 }
 function refrescarTodo(){
-  showTab(document.querySelector('nav button.active').dataset.tab);
+  showTab(tabActiva());
 }
 function mostrarMsg(id, texto, ok){
   const el = document.getElementById(id);
@@ -380,8 +467,9 @@ function avatar(v){
 
 // ---------- Yo soy ----------
 function llenarSelYo(){
-  document.getElementById('selYo').innerHTML =
-    '<option value="">— Todos (modo administrador) —</option>' +
+  if(yoId && !db.voluntarios.some(v=>v.id===yoId)) yoId = '';
+  const primera = isAdmin ? '<option value="">— Todos (modo administrador) —</option>' : '<option value="">— Elige tu nombre —</option>';
+  document.getElementById('selYo').innerHTML = primera +
     db.voluntarios.map(v=>`<option value="${esc(v.id)}" ${v.id===yoId?'selected':''}>${esc(v.nombre)}</option>`).join('');
 }
 function cambiarYo(){
@@ -390,14 +478,16 @@ function cambiarYo(){
   pintarVotacion();
 }
 
-// ---------- Voluntarios ----------
+// ---------- Voluntarios (administrador) ----------
 async function agregarVoluntario(){
+  const id = document.getElementById('nuevoId').value.trim();
   const nombre = document.getElementById('nuevoNombre').value.trim();
+  const compania = document.getElementById('nuevaComp').value;
   const foto = document.getElementById('nuevaFoto').value.trim();
   if(!nombre) return mostrarMsg('msgVol','Escribe un nombre.',false);
   try{
-    await apiPost({action:'addVol', nombre, foto});
-    document.getElementById('nuevoNombre').value=''; document.getElementById('nuevaFoto').value='';
+    await apiPost({action:'addVol', id, nombre, compania, foto});
+    ['nuevoId','nuevoNombre','nuevaFoto'].forEach(x=>document.getElementById(x).value='');
     await sincronizar();
     mostrarMsg('msgVol','Voluntario agregado ✔',true);
   }catch(e){ mostrarMsg('msgVol','Error: '+e.message,false); }
@@ -414,26 +504,58 @@ async function cambiarFoto(id){
   try{ await apiPost({action:'setFoto', id, foto:url.trim()}); await sincronizar(); }
   catch(e){ alert('Error: '+e.message); }
 }
+async function cambiarCompania(id, compania){
+  try{ await apiPost({action:'setCompania', id, compania}); await sincronizar(); }
+  catch(e){ alert('Error: '+e.message); await sincronizar(); }
+}
 function pintarVoluntarios(){
   const tb = document.getElementById('tablaVoluntarios');
-  const hoy = turnoYFechaActual().fecha;
-  tb.innerHTML = db.voluntarios.length ? db.voluntarios.map((v,i)=>{
-    const chips = Object.keys(TURNOS).map(t=>{
-      const voto = votosDe(hoy,t)[v.id];
-      return `<span class="tag ${voto?CLASES[voto]:'sin'}" title="${TURNOS[t].nombre}">${TURNOS[t].nombre.split(' ')[0]} ${voto?(voto==='nr'?'NR':voto==='disp'?'0-9':'0-8'):'—'}</span>`;
-    }).join(' ');
-    return `<tr><td>${i+1}</td><td><div class="nm">${avatar(v)}${esc(v.nombre)}</div></td><td>${chips}</td>
-      <td><button class="btn sec" onclick="cambiarFoto('${esc(v.id)}')">🖼️</button>
-          <button class="btn sec" onclick="eliminarVoluntario('${esc(v.id)}')">🗑️</button></td></tr>`;
-  }).join('') : '<tr><td colspan="4" style="color:#b0bec5">No hay voluntarios registrados todavía.</td></tr>';
+  const {fecha:hoy, turno:turnoAct} = turnoYFechaActual();
+  const icono = TURNOS[turnoAct].nombre.split(' ')[0];
+  document.getElementById('avisoLista').textContent =
+    `Turno actual: ${TURNOS[turnoAct].nombre}. Los que votaron 0-9 aparecen primero en su compañía. Se actualiza solo cada ${REFRESCO_MS/1000} segundos.`;
+  if(!db.voluntarios.length){
+    tb.innerHTML = '<tr><td colspan="5" style="color:#b0bec5">No hay voluntarios registrados todavía.</td></tr>';
+    return;
+  }
+  const votosAct = votosDe(hoy, turnoAct);
+  const rank = v => votosAct[v.id]==='disp' ? 0 : 1;
+  let html = '';
+  ['1','2','3',''].forEach(c=>{
+    const grupo = db.voluntarios.map((v,i)=>[v,i]).filter(x=>compDe(x[0])===c)
+      .sort((a,b)=>rank(a[0])-rank(b[0]) || a[1]-b[1]).map(x=>x[0]);
+    if(!grupo.length) return;
+    const nDisp = grupo.filter(v=>votosAct[v.id]==='disp').length;
+    html += `<tr class="grupo"><td colspan="5">${COMP_NOM[c]} — ${nDisp} de ${grupo.length} disponibles (${icono})</td></tr>`;
+    html += grupo.map(v=>{
+      const chips = Object.keys(TURNOS).map(t=>{
+        const voto = votosDe(hoy,t)[v.id];
+        const trabajo = virt.has(hoy+'|'+t+'|'+v.id) ? '🧰 ' : '';
+        return `<span class="tag ${voto?CLASES[voto]:'sin'} ${t===turnoAct?'ahora':''}" title="${TURNOS[t].nombre}">${TURNOS[t].nombre.split(' ')[0]} ${trabajo}${voto?(voto==='nr'?'NR':voto==='disp'?'0-9':'0-8'):'—'}</span>`;
+      }).join(' ');
+      const opts = ['','1','2','3'].map(k=>`<option value="${k}" ${k===c?'selected':''}>${COMP_NOM[k]}</option>`).join('');
+      return `<tr><td class="idcol">${esc(v.id)}</td><td><div class="nm">${avatar(v)}${esc(v.nombre)}</div></td><td>${chips}</td>
+        <td><select onchange="cambiarCompania('${esc(v.id)}',this.value)">${opts}</select></td>
+        <td><button class="btn sec" onclick="cambiarFoto('${esc(v.id)}')">🖼️</button>
+            <button class="btn sec" onclick="eliminarVoluntario('${esc(v.id)}')">🗑️</button></td></tr>`;
+    }).join('');
+  });
+  tb.innerHTML = html;
 }
 
 // ---------- Ausencias por trabajo ----------
 function llenarSelAus(){
   const sel = document.getElementById('ausVol');
-  const prev = sel.value || yoId;
-  sel.innerHTML = '<option value="">— Elige voluntario —</option>' +
-    db.voluntarios.map(v=>`<option value="${esc(v.id)}" ${v.id===prev?'selected':''}>${esc(v.nombre)}</option>`).join('');
+  if(isAdmin){
+    const prev = sel.value || yoId;
+    sel.innerHTML = '<option value="">— Elige voluntario —</option>' +
+      db.voluntarios.map(v=>`<option value="${esc(v.id)}" ${v.id===prev?'selected':''}>${esc(v.nombre)}</option>`).join('');
+  } else {
+    // El voluntario solo puede programar ausencias para sí mismo
+    const yo = db.voluntarios.find(x=>x.id===yoId);
+    sel.innerHTML = yo ? `<option value="${esc(yo.id)}">${esc(yo.nombre)}</option>`
+                       : '<option value="">— Primero elige tu nombre en Votar —</option>';
+  }
   const desde = document.getElementById('ausDesde');
   if(!desde.value) desde.value = turnoYFechaActual().fecha;
 }
@@ -442,7 +564,7 @@ async function programarAusencia(){
   const desde = document.getElementById('ausDesde').value;
   const hasta = document.getElementById('ausHasta').value;
   const motivo = document.getElementById('ausMotivo').value.trim() || 'Trabajo';
-  if(!volId) return mostrarMsg('msgAus','Elige un voluntario.',false);
+  if(!volId) return mostrarMsg('msgAus', isAdmin ? 'Elige un voluntario.' : 'Primero elige tu nombre en la pestaña Votar.',false);
   if(!desde || !hasta) return mostrarMsg('msgAus','Indica la fecha desde y hasta.',false);
   if(hasta < desde) return mostrarMsg('msgAus','La fecha "hasta" no puede ser anterior a "desde".',false);
   try{
@@ -460,7 +582,8 @@ async function eliminarAusencia(id){
 function pintarAusencias(){
   llenarSelAus();
   const hoy = turnoYFechaActual().fecha;
-  const lista = [...(db.ausencias||[])].sort((a,b)=>b.desde.localeCompare(a.desde));
+  // El voluntario ve solo sus propias ausencias; el administrador ve todas
+  const lista = [...(db.ausencias||[])].filter(a=>isAdmin || a.volId===yoId).sort((a,b)=>b.desde.localeCompare(a.desde));
   document.getElementById('tablaAusencias').innerHTML = lista.length ? lista.map(a=>{
     const v = db.voluntarios.find(x=>x.id===a.volId);
     const est = a.hasta < hoy ? ['Finalizada','sin'] : a.desde <= hoy ? ['En curso','aus'] : ['Programada','nr'];
@@ -493,7 +616,12 @@ function pintarVotacion(){
     `Turno habilitado ahora: ${TURNOS[turnoSel].nombre} (${TURNOS[turnoSel].horas}). Los otros turnos se habilitan en su horario.`;
   llenarSelYo();
   const votos = votosDe(fechaSel, turnoSel);
-  const lista = yoId ? db.voluntarios.filter(v=>v.id===yoId) : db.voluntarios;
+  // Voluntario: solo se ve a sí mismo. Administrador: todos o el que elija.
+  const lista = yoId ? db.voluntarios.filter(v=>v.id===yoId) : (isAdmin ? db.voluntarios : []);
+  if(!yoId && !isAdmin){
+    document.getElementById('listaVotacion').innerHTML = '<p style="color:#b0bec5">Elige tu nombre en "Yo soy" para votar.</p>';
+    return;
+  }
   document.getElementById('listaVotacion').innerHTML = lista.length ? lista.map(v=>{
     const aus = ausenciaDe(v.id, fechaSel);
     if(aus){
@@ -604,13 +732,23 @@ function exportarCSV(){
 }
 
 // ---------- Init ----------
+aplicarRol();
 document.getElementById('inpUrl').value = API_URL;
-showTab(API_URL ? 'votar' : 'config');
-if(API_URL) sincronizar();
-// Cada 60 s se actualizan los datos si estás en "Votar"
-setInterval(()=>{ if(API_URL && document.querySelector('nav button.active').dataset.tab==='votar') sincronizar(); }, 60000);
+showTab('votar');
+if(API_URL){
+  sincronizar();
+  if(adminClave) verificarAdmin();
+} else {
+  setEstado('Sin configurar','off');
+}
+// Cada 15 s se actualizan los votos en "Votar" y en la lista de "Voluntarios" (voto en tiempo real)
+setInterval(()=>{
+  if(!API_URL || document.hidden) return;
+  const t = tabActiva();
+  if(t==='votar' || t==='voluntarios') sincronizar(false, true);
+}, REFRESCO_MS);
 // Cada 20 s se revisa si cambió el turno para habilitar el que corresponde
-setInterval(()=>{ if(refrescarTurnoActual() && document.querySelector('nav button.active').dataset.tab==='votar') pintarVotacion(); }, 20000);
+setInterval(()=>{ if(refrescarTurnoActual() && (tabActiva()==='votar' || tabActiva()==='voluntarios')) refrescarTodo(); }, 20000);
 </script>
 </body>
 </html>
